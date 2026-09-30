@@ -67,12 +67,17 @@ const worker = queueService.process(
     concurrency: 4,
     onCompleted: (name, id) => metrics.increment(`jobs.${name}.ok`),
     onFailed: (name, id, error) => log.error(`job ${name}#${id} exhausted retries`, error), // fires once, after the last attempt
+    onError: (error) => log.warn("queue engine hiccup", error), // engine/backend failures, not job failures
   },
 );
 await worker.close(); // drains in-flight jobs
 ```
 
 One queue, jobs dispatched to processors by name; a job with no registered processor fails loudly and lands in the retry/failed flow like any other error.
+
+Worker loops survive their backend: an engine error (a Redis connection reset, a corrupted repeat
+spec) is reported to `onError`, the loop sleeps one `pollInterval`, and polling resumes — it never
+kills the worker.
 
 ## Repeatable schedules
 
