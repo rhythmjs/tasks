@@ -1,6 +1,6 @@
 # @rhythmjs/bullmq
 
-[BullMQ](https://docs.bullmq.io)-backed job queues for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native backend framework: the same typed job map and kernel-module discipline as [`@rhythmjs/queue`](../queue), on full BullMQ. Choose this package when you want BullMQ's production machinery — Redis-durable jobs, stalled-job recovery with lock renewal, Lua-scripted atomic state transitions, Job Schedulers, rate limiting, the Bull Board / Taskforce ecosystem — and accept its ioredis dependency. Choose `@rhythmjs/queue` when you want zero queue dependencies on Bun natives.
+[BullMQ](https://docs.bullmq.io)-backed job queues for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native backend framework: the same typed job map and kernel-module discipline as [`@rhythmjs/queue`](../queue), on full BullMQ. Choose this package when you want BullMQ's production machinery (Redis-durable jobs, stalled-job recovery with lock renewal, Lua-scripted atomic state transitions, Job Schedulers, rate limiting, the Bull Board / Taskforce ecosystem) and accept its ioredis dependency. Choose `@rhythmjs/queue` when you want zero queue dependencies on Bun natives.
 
 The two packages share the same service shape, so switching is a one-line change at the registration site; handlers and producers do not move.
 
@@ -15,7 +15,7 @@ Requires Redis: `docker run --rm -p 6379:6379 redis`.
 ## The job map is the contract
 
 ```ts
-// jobs/index.ts — one centralized place
+// jobs/index.ts, one centralized place
 import type { QueueContext } from "@rhythmjs/bullmq";
 
 export interface AppJobs {
@@ -40,14 +40,14 @@ const app = new Rhythm().register(
 );
 ```
 
-The module owns the BullMQ lifecycle: workers and the queue close on the kernel's `teardown()` (reverse provider order — plays with `gracefulShutdown` automatically).
+The module owns the BullMQ lifecycle: workers and the queue close on the kernel's `teardown()` (reverse provider order, so it plays with `gracefulShutdown` automatically).
 
 ## Producing
 
 ```ts
 await queueService.add("email.send", { to: "a@b.c", subject: "hi" }, { delay: 5000 });
-// queueService.add("email.snd", …)         ← compile error
-// queueService.add("order.process", {to})  ← compile error: wrong payload
+// queueService.add("email.snd", …) ← compile error
+// queueService.add("order.process", {to}) ← compile error: wrong payload
 
 await queueService.addBulk([
   { name: "email.send", payload: { to: "x@y.z", subject: "s" } },
@@ -87,7 +87,7 @@ Backed by BullMQ Job Schedulers (Redis-coordinated), this **fires once across an
 
 ## The escape hatch
 
-`queueService.queue` is the underlying BullMQ `Queue` — pause/resume, `getJobs`, flows, metrics, and anything else this facade doesn't wrap:
+`queueService.queue` is the underlying BullMQ `Queue`: pause/resume, `getJobs`, flows, metrics, and anything else this facade doesn't wrap:
 
 ```ts
 await queueService.queue.pause();
@@ -97,8 +97,8 @@ await queueService.queue.pause();
 
 ```sh
 bun install
-bun test           # wiring suite runs mocked; live suite self-skips without REDIS_URL
-REDIS_URL=redis://localhost:6379 bun test   # + live integration against real Redis
-bun run typecheck  # tsc --noEmit
-bun run build      # bun build + tsc declarations
+bun test # wiring suite runs mocked; live suite self-skips without REDIS_URL
+REDIS_URL=redis://localhost:6379 bun test # + live integration against real Redis
+bun run typecheck # tsc --noEmit
+bun run build # bun build + tsc declarations
 ```

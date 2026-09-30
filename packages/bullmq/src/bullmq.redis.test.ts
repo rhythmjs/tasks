@@ -1,8 +1,3 @@
-// Live integration against a real Redis. Skips itself unless REDIS_URL is
-// set, e.g.:  docker run --rm -p 6379:6379 redis  &&  REDIS_URL=redis://localhost:6379 bun test
-//
-// This file sorts before bullmq.test.ts on purpose: it must import the real
-// bullmq module before that file replaces it with mock.module().
 import { afterAll, describe, expect, test } from "bun:test";
 import { createQueueService } from "./bullmq";
 

@@ -71,8 +71,6 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
     return subscription.unsubscribe;
   };
 
-  // Sync throws and async rejections both route to onError; the remaining
-  // listeners always run.
   const invoke = (handler: AnyHandler, payload: unknown, event: string): void => {
     try {
       const out = handler(payload, event);
@@ -87,7 +85,6 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
   const dispatchPattern = (pattern: string, payload: unknown, event: string): void => {
     const entries = registry.get(pattern);
     if (entries === undefined) return;
-    // Snapshot: handlers may unsubscribe (mutating the registry) mid-dispatch.
     for (const [handler, subscription] of Array.from(entries)) {
       if (subscription.once) subscription.unsubscribe();
       invoke(handler, payload, event);
@@ -131,7 +128,6 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
       registry.get(pattern)?.get(handler)?.unsubscribe();
     },
     emit(event: string, payload: unknown) {
-      // Exact subscribers first, then wildcard patterns in registration order.
       dispatchPattern(event, payload, event);
       for (const pattern of Array.from(registry.keys())) {
         if (pattern !== event && matchesPattern(pattern, event)) dispatchPattern(pattern, payload, event);

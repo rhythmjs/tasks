@@ -1,7 +1,3 @@
-// Typed job queue on the kernel: produce, process by job name, repeatable
-// schedule, lifecycle teardown. Runs in-process by default — pass
-// `redis: "redis://localhost:6379"` (Bun's native redis client) to distribute.
-// Run with: bun index.ts
 import { Rhythm } from "@rhythmjs/rhythm";
 import { queueModule } from "@rhythmjs/queue";
 
@@ -49,7 +45,6 @@ await queueService.addBulk([
   { name: "order.process", payload: { orderId: "o-2" } },
 ]);
 
-// Repeatable schedule — cron patterns run through @rhythmjs/schedule's engine.
 await queueService.schedule("order.process", { pattern: "0 3 * * *", timezone: "UTC" }, { orderId: "nightly" });
 console.log("[schedule] nightly order.process registered");
 await queueService.unschedule("order.process");
@@ -58,6 +53,6 @@ const deadline = Date.now() + 5000;
 while (done.size < 4 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
 console.log("[counts]", await queueService.counts());
 
-await app.teardown(); // closes workers, then the engine
+await app.teardown();
 console.log("closed cleanly");
 process.exit(0);

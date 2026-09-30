@@ -1,5 +1,3 @@
-// Cron, interval, and timeout jobs on the kernel, driven by the in-process scheduler.
-// Runs for ~3.5 seconds, prints job state, then shuts down. Run with: bun index.ts
 import { Rhythm } from "@rhythmjs/rhythm";
 import { cronJob, cronPatterns, intervalJob, scheduleModule, timeoutJob } from "@rhythmjs/schedule";
 import { startScheduler } from "@rhythmjs/schedule/scheduler";
@@ -21,10 +19,8 @@ const app = new Rhythm().register(
 await app.setup();
 const { scheduleService } = await app.run({});
 
-// Manual trigger — the same entry point the scheduler uses.
 await scheduleService.run("warmup");
 
-// nextRun / runDue work without any scheduler running.
 console.log("[nextRun] tick fires next at", scheduleService.nextRun("tick")?.toISOString());
 console.log(
   "[runDue] due this minute:",

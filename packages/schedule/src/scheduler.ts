@@ -5,8 +5,6 @@ export interface Scheduler {
   stop(): void;
 }
 
-// setTimeout delays above 2^31 - 1 ms overflow, so far-future cron runs
-// re-arm in chunks instead of firing early.
 const MAX_DELAY = 2_147_483_647;
 
 export function startScheduler(service: ScheduleService): Scheduler {

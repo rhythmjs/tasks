@@ -1,6 +1,5 @@
 import type { QueueEngine, RepeatSpec, StoredJob } from "./types";
 
-/** The default engine: in-process, zero dependencies, timers and arrays. */
 export function memoryEngine(): QueueEngine {
   const waiting: StoredJob[] = [];
   const delayed: StoredJob[] = [];

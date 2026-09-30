@@ -1,21 +1,14 @@
 import type { QueueEngine, RepeatSpec, StoredJob } from "./types";
 
 export interface RedisEngineOptions {
-  /** Key prefix, e.g. "rhythm:jobs". */
   prefix?: string;
 }
 
-/** The subset of Bun.RedisClient the engine uses; Bun.redis satisfies it. */
 export interface RedisLike {
   send(command: string, args: string[]): Promise<unknown>;
   close(): void;
 }
 
-/**
- * A distributed engine on Bun's native redis client. Ready work lives in a
- * list, delayed and repeating work in sorted sets scored by readiness time;
- * claims go through ZREM so concurrent workers never double-take.
- */
 export function redisEngine(
   connection?: string | Bun.RedisClient | RedisLike,
   options: RedisEngineOptions = {},
@@ -45,7 +38,6 @@ export function redisEngine(
       "32",
     ])) as string[];
     for (const member of due) {
-      // The claim: only the worker whose ZREM removes the member enqueues it.
       const claimed = (await client.send("ZREM", [key("delayed"), member])) as number;
       if (claimed === 1) await client.send("RPUSH", [key("waiting"), member]);
     }

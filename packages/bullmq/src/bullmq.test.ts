@@ -1,7 +1,3 @@
-// Wiring tests: bullmq is replaced with recording fakes via mock.module, so
-// the facade's mapping onto Queue/Worker is covered without a Redis server.
-// (bullmq.redis.test.ts holds the live suite; it runs first and binds the
-// real module before this mock lands.)
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 type AnyRecord = Record<string, unknown>;

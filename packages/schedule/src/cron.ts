@@ -4,12 +4,12 @@ export interface CronOptions {
 
 interface DateParts {
   year: number;
-  month: number; // 1-12
-  day: number; // 1-31
-  hour: number; // 0-23
-  minute: number; // 0-59
-  second: number; // 0-59
-  dow: number; // 0-6, 0 = Sunday
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  dow: number;
 }
 
 interface Clock {
@@ -72,10 +72,6 @@ function timezoneClock(timezone: string): Clock {
   return {
     parts,
     make(year, month, day, hour, minute, second) {
-      // Guess the UTC instant, then correct it by however far the guess lands
-      // from the requested wall-clock time in the target zone. Two rounds
-      // converge everywhere except inside a DST gap, where the requested time
-      // does not exist and the caller re-validates via parts().
       const target = Date.UTC(year, month - 1, day, hour, minute, second);
       let ts = target;
       for (let i = 0; i < 3; i++) {
@@ -187,13 +183,10 @@ export class Cron {
     this.#hours = parseField(hour!, "hour", 0, 23, {}, pattern);
     this.#days = parseField(day!, "day-of-month", 1, 31, {}, pattern);
     this.#months = parseField(month!, "month", 1, 12, MONTH_NAMES, pattern);
-    // Day-of-week 7 is an alias for Sunday.
     const dows = parseField(dow!, "day-of-week", 0, 7, DOW_NAMES, pattern);
     if (dows[7] === true) dows[0] = true;
     this.#dows = dows;
     this.#clock = options.timezone === undefined ? localClock : timezoneClock(options.timezone);
-    // Standard cron: when both day fields are restricted, a date matching
-    // either one is due; a field is unrestricted when it starts with "*".
     this.#dayRestricted = !day!.startsWith("*");
     this.#dowRestricted = !dow!.startsWith("*");
   }
@@ -221,7 +214,6 @@ export class Cron {
       else if (this.#minutes[p.minute] !== true) jump = clock.make(p.year, p.month, p.day, p.hour, p.minute + 1, 0);
       else if (this.#seconds[p.second] !== true) jump = ts + 1000;
       else return new Date(ts);
-      // Clamp forward so DST gaps and overlaps can never stall the search.
       ts = Math.max(jump, ts + 1000);
     }
     return null;

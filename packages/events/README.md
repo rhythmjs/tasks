@@ -2,14 +2,13 @@
 
 A fully typed in-process event bus for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native
 backend framework: event names, payloads, and even **wildcard subscriptions** are checked at compile
-time via template-literal types — the type safety string-based emitters can't offer, with zero
+time via template-literal types, the type safety string-based emitters can't offer, with zero
 dependencies.
 
-The dispatch underneath is in-house and dependency-free — a pattern registry over Bun's
-natively-optimized event primitives — configured with `captureRejections` for async error routing
-and channel-prefixed internally so a user event named `error` carries no special semantics. The
-typed facade (event map, wildcards, dual emit semantics) is entirely this package; the hot dispatch
-path is the platform's.
+The dispatch underneath is in-house and dependency-free: a plain pattern registry with no event
+emitter at all. Sync throws and async rejections both route to the `onError` hook, and a user event
+named `error` carries no special semantics. The typed facade (event map, wildcards, dual emit
+semantics) and the dispatch are entirely this package.
 
 ## Install
 
@@ -20,7 +19,7 @@ bun add @rhythmjs/events
 ## The event map is the contract
 
 ```ts
-// events/index.ts — one centralized place, like config/index.ts
+// events/index.ts, one centralized place, like config/index.ts
 import type { EventsContext } from "@rhythmjs/events";
 
 export interface AppEvents {
@@ -41,7 +40,7 @@ const app = new Rhythm().register(eventsModule.forRoot<AppEvents>(), ({ eventBus
 // any child module, type-safe via the exported context type:
 const orderModule = new Rhythm<AppEventsContext>().use(async (ctx, next) => {
   ctx.eventBus.emit("order.created", { orderId: "o1", total: 99 });
-  // ctx.eventBus.emit("order.craeted", …)  ← compile error
+  // ctx.eventBus.emit("order.craeted", …) ← compile error
   await next();
 });
 ```
@@ -50,7 +49,7 @@ const orderModule = new Rhythm<AppEventsContext>().use(async (ctx, next) => {
 
 ```ts
 const unsubscribe = eventBus.on("order.created", (payload) => {
-  payload.total; // number — exact payload type
+  payload.total; // number, the exact payload type
 });
 
 eventBus.on("order.*", (payload, event) => {
@@ -59,39 +58,39 @@ eventBus.on("order.*", (payload, event) => {
 eventBus.on("**", handler); // everything; "*" matches one segment, terminal "**" matches the rest
 
 eventBus.once("order.created", handler); // one-shot
-const payload = await eventBus.once("order.created"); // promise form — great in tests
+const payload = await eventBus.once("order.created"); // promise form, great in tests
 
 eventBus.on("order.created", handler, { signal: controller.signal }); // AbortSignal unsubscription
 eventBus.off("order.created", handler);
 ```
 
 Listeners registered by a module belong in a provider, with the unsubscribes (or one
-`AbortController`) returned to `dispose` — lifecycle-correct teardown through the kernel, no
+`AbortController`) returned to `dispose`: lifecycle-correct teardown through the kernel, no
 decorators.
 
-## Emitting — two semantics, two error contracts
+## Emitting: two semantics, two error contracts
 
-- `emit(event, payload): void` — fire-and-forget, synchronous dispatch. Every listener failure (sync
+- `emit(event, payload): void`: fire-and-forget, synchronous dispatch. Every listener failure (sync
   throw or async rejection) routes to the module's `onError(error, event, payload)` hook; the
   default rethrows in a microtask so nothing is silently swallowed. Emitters are never broken by
   listeners.
-- `await emitAsync(event, payload)` — awaits all listeners in parallel; failures are collected into
+- `await emitAsync(event, payload)`: awaits all listeners in parallel; failures are collected into
   one `AggregateError` that the caller owns. Successful listeners always complete even when others
   fail.
 
 ## API
 
-- `eventsModule.forRoot<TEvents>(options?)` — the kernel module, exporting `eventBus` via
+- `eventsModule.forRoot<TEvents>(options?)`: the kernel module, exporting `eventBus` via
   `register`'s second argument. `options.onError` sets the fire-and-forget error hook.
-- `createEventBus<TEvents>(options?)` — the bus without the module (tests, standalone use).
-- `EventBus<TEvents>` — `on` / `once` / `off` / `emit` / `emitAsync` / `listenerCount`.
-- `EventsContext<TEvents>` — the context slice a child module declares as its input.
-- `matchesPattern(pattern, event)` — the runtime matcher, exported for reuse.
+- `createEventBus<TEvents>(options?)`: the bus without the module (tests, standalone use).
+- `EventBus<TEvents>`: `on` / `once` / `off` / `emit` / `emitAsync` / `listenerCount`.
+- `EventsContext<TEvents>`: the context slice a child module declares as its input.
+- `matchesPattern(pattern, event)`: the runtime matcher, exported for reuse.
 - Types on `@rhythmjs/events/types`: `EventMap`, `EventPattern`, `MatchingEvents` /
   `MatchingNames` / `MatchingPayload` (the template-literal wildcard machinery), `EventHandler`,
   `OnOptions`, `EventBusOptions`.
 
-The delimiter is fixed to `.` — it is what makes the wildcard types possible.
+The delimiter is fixed to `.`; it is what makes the wildcard types possible.
 
 ## Toward durable queues
 
@@ -99,7 +98,7 @@ The bus is deliberately in-process: no persistence, no retries, no cross-instanc
 belong to `@rhythmjs/queue`, which reuses the same event-map
 discipline. Two conventions now keep that path smooth:
 
-- Keep payloads **JSON-serializable** for any event you may later bridge to a queue — a queue job
+- Keep payloads **JSON-serializable** for any event you may later bridge to a queue, since a queue job
   crosses Redis, so functions, class instances, and cyclic structures won't survive the trip.
 - The `(payload, event)` handler signature makes bridging a one-liner, with the event name becoming
   the job name:
@@ -112,7 +111,7 @@ eventBus.on("order.**", (payload, event) => void queue.add(event, payload));
 
 ```sh
 bun install
-bun test           # bun test runner
-bun run typecheck  # tsc --noEmit
-bun run build      # bun build + tsc declarations
+bun test # bun test runner
+bun run typecheck # tsc --noEmit
+bun run build # bun build + tsc declarations
 ```

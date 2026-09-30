@@ -4,8 +4,8 @@ Task scheduling for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native
 timeout jobs declared as plain values, served by a kernel module, and driven by an in-process
 scheduler backed by a dependency-free, timezone-aware cron engine.
 
-The design splits _what runs_ from _who decides when_: every trigger — the scheduler or your own
-code — reduces to `scheduleService.run(name)`, so job semantics (overlap skipping, error capture,
+The design splits _what runs_ from _who decides when_: every trigger, the scheduler or your own
+code alike, reduces to `scheduleService.run(name)`, so job semantics (overlap skipping, error capture,
 per-job state) live in one place and the scheduler stays thin.
 
 ## Install
@@ -32,23 +32,23 @@ const app = new Rhythm().register(scheduleModule.forRoot(...jobs), ({ scheduleSe
 }));
 ```
 
-Job options: `timezone` (cron only, DST-correct), `overlap` (`"skip"` — the default — or
+Job options: `timezone` (cron only, DST-correct), `overlap` (`"skip"`, the default, or
 `"allow"`), `disabled`. `cronPatterns` covers the common expressions (`everyMinute`, `hourly`,
 `daily`, …); patterns take 5 fields, an optional leading seconds field (6 fields), names
 (`jan-dec`, `sun-sat`), lists, ranges, steps, and `@daily`-style aliases.
 
 ## `scheduleService`
 
-- `run(name)` — execute one job now: the universal entry point. Skips when `disabled` or already
+- `run(name)`: execute one job now, the universal entry point. Skips when `disabled` or already
   `running` (with `overlap: "skip"`), catches errors into the result and state, returns
   `{ name, ran, durationMs?, error? }`.
-- `runDue(date?)` — run every enabled cron job due at that minute.
-- `state(name)` — `{ running, runs, lastRun?, lastError?, nextRun? }` — pairs naturally with a
+- `runDue(date?)`: run every enabled cron job due at that minute.
+- `state(name)`: `{ running, runs, lastRun?, lastError?, nextRun? }`; pairs naturally with a
   `HealthIndicator`.
-- `nextRun(name, from?)` — next occurrence (cron jobs; `null` otherwise).
-- `add(job)` / `remove(name)` — dynamic registry for jobs defined at runtime. A scheduler
+- `nextRun(name, from?)`: next occurrence (cron jobs; `null` otherwise).
+- `add(job)` / `remove(name)`: dynamic registry for jobs defined at runtime. A scheduler
   started earlier keeps its snapshot; restart it to pick up changes.
-- `jobs` — the registry.
+- `jobs`: the registry.
 
 ## Running the scheduler
 
@@ -72,7 +72,7 @@ new Cron("30 2 * * *", { timezone: "Europe/Paris" }).nextRun(); // Date | null, 
 ## Out of scope, by design
 
 Distributed one-instance locking across replicas (a pluggable lock-store follow-up), persistent
-job queues (BullMQ territory), and platform-specific schedulers — this package is coupled to Bun
+job queues (BullMQ territory), and platform-specific schedulers; this package is coupled to Bun
 on purpose.
 
 ## Development
@@ -80,6 +80,6 @@ on purpose.
 ```sh
 bun install
 bun test
-bun run typecheck  # tsc --noEmit
-bun run build      # bun build + tsc declarations
+bun run typecheck # tsc --noEmit
+bun run build # bun build + tsc declarations
 ```

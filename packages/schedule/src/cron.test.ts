@@ -39,7 +39,6 @@ describe("Cron.nextRun", () => {
 
   test("month and weekday names", () => {
     expect(next("0 0 1 jan *", "2026-03-01T00:00:00.000Z", "UTC")).toBe("2027-01-01T00:00:00.000Z");
-    // 2026-01-10 is a Saturday.
     expect(next("0 9 * * mon-fri", "2026-01-10T00:00:00.000Z", "UTC")).toBe("2026-01-12T09:00:00.000Z");
     expect(next("0 0 * * sun", "2026-01-10T01:00:00.000Z", "UTC")).toBe("2026-01-11T00:00:00.000Z");
   });
@@ -49,7 +48,6 @@ describe("Cron.nextRun", () => {
   });
 
   test("restricted day-of-month OR day-of-week, like standard cron", () => {
-    // Friday the 9th and Tuesday the 13th both match "13th or Friday".
     expect(next("0 0 13 * fri", "2026-01-08T00:00:00.000Z", "UTC")).toBe("2026-01-09T00:00:00.000Z");
     expect(next("0 0 13 * fri", "2026-01-10T00:00:00.000Z", "UTC")).toBe("2026-01-13T00:00:00.000Z");
   });
@@ -63,16 +61,12 @@ describe("Cron.nextRun", () => {
   });
 
   test("timezone-aware occurrences", () => {
-    // Midnight in New York is 05:00 UTC in winter.
     expect(next("0 0 * * *", "2026-01-10T10:00:00.000Z", "America/New_York")).toBe("2026-01-11T05:00:00.000Z");
-    // And 04:00 UTC in summer.
     expect(next("0 0 * * *", "2026-07-10T10:00:00.000Z", "America/New_York")).toBe("2026-07-11T04:00:00.000Z");
-    // Karachi has no DST and a +05:00 offset.
     expect(next("30 9 * * *", "2026-01-10T10:00:00.000Z", "Asia/Karachi")).toBe("2026-01-11T04:30:00.000Z");
   });
 
   test("a wall-clock time erased by a DST spring-forward gap is skipped", () => {
-    // Paris jumps 02:00 -> 03:00 on 2026-03-29, so 02:30 does not exist that day.
     expect(next("30 2 * * *", "2026-03-28T12:00:00.000Z", "Europe/Paris")).toBe("2026-03-30T00:30:00.000Z");
   });
 

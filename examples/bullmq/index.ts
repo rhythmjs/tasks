@@ -1,6 +1,3 @@
-// Typed BullMQ queue: produce, process by job name, repeatable schedule, lifecycle teardown.
-// Requires Redis:  docker run --rm -p 6379:6379 redis
-// Run with: bun index.ts   (REDIS_HOST / REDIS_PORT override localhost:6379)
 import { Rhythm } from "@rhythmjs/rhythm";
 import { bullmqModule } from "@rhythmjs/bullmq";
 
@@ -12,12 +9,11 @@ interface AppJobs {
 const host = process.env.REDIS_HOST ?? "127.0.0.1";
 const port = Number(process.env.REDIS_PORT ?? 6379);
 
-// Preflight so the example fails friendly instead of retrying forever.
 try {
   const socket = await Bun.connect({ hostname: host, port, socket: { data() {} } });
   socket.end();
 } catch {
-  console.error(`No Redis at ${host}:${port} — start one with: docker run --rm -p 6379:6379 redis`);
+  console.error(`No Redis at ${host}:${port}. Start one with: docker run --rm -p 6379:6379 redis`);
   process.exit(1);
 }
 
@@ -60,7 +56,6 @@ await queueService.addBulk([
   { name: "order.process", payload: { orderId: "o-2" } },
 ]);
 
-// Replica-safe repeatable schedule (BullMQ Job Scheduler) — registered, shown, removed.
 await queueService.schedule("order.process", { pattern: "0 3 * * *", tz: "UTC" }, { orderId: "nightly" });
 console.log("[schedule] nightly order.process registered");
 await queueService.unschedule("order.process");
@@ -69,6 +64,6 @@ const deadline = Date.now() + 5000;
 while (done.size < 4 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
 console.log("[counts]", await queueService.counts());
 
-await app.teardown(); // closes workers, then the queue
+await app.teardown();
 console.log("closed cleanly");
 process.exit(0);

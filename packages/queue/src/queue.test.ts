@@ -195,8 +195,6 @@ describe("queueModule", () => {
   });
 });
 
-// A miniature redis speaking just the commands the engine sends, so the
-// engine's key handling is covered without a server.
 function fakeRedis(): RedisLike & { closed: boolean } {
   const lists = new Map<string, string[]>();
   const zsets = new Map<string, Map<string, number>>();
