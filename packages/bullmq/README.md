@@ -1,6 +1,6 @@
 # @rhythmjs/bullmq
 
-[BullMQ](https://docs.bullmq.io)-backed job queues for [Rhythm](https://github.com/rhythmjs/rhythm): the same typed job map and kernel-module discipline as [`@rhythmjs/queue`](../queue), on full BullMQ. Choose this package when you want BullMQ's production machinery — Redis-durable jobs, stalled-job recovery with lock renewal, Lua-scripted atomic state transitions, Job Schedulers, rate limiting, the Bull Board / Taskforce ecosystem — and accept its ioredis dependency. Choose `@rhythmjs/queue` when you want zero queue dependencies on Bun natives.
+[BullMQ](https://docs.bullmq.io)-backed job queues for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native backend framework: the same typed job map and kernel-module discipline as [`@rhythmjs/queue`](../queue), on full BullMQ. Choose this package when you want BullMQ's production machinery — Redis-durable jobs, stalled-job recovery with lock renewal, Lua-scripted atomic state transitions, Job Schedulers, rate limiting, the Bull Board / Taskforce ecosystem — and accept its ioredis dependency. Choose `@rhythmjs/queue` when you want zero queue dependencies on Bun natives.
 
 The two packages share the same service shape, so switching is a one-line change at the registration site; handlers and producers do not move.
 

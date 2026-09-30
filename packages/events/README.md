@@ -1,16 +1,15 @@
 # @rhythmjs/events
 
-A fully typed event bus for [Rhythm](https://github.com/rhythmjs/rhythm): the NestJS events feature
-rebuilt on the kernel with the type safety string-based emitters can't offer, and zero dependencies.
-Event names, payloads, and even **wildcard subscriptions** are checked at compile time via
-template-literal types.
+A fully typed in-process event bus for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native
+backend framework: event names, payloads, and even **wildcard subscriptions** are checked at compile
+time via template-literal types — the type safety string-based emitters can't offer, with zero
+dependencies.
 
 The dispatch underneath is in-house and dependency-free — a pattern registry over Bun's
-natively-optimized showcase modules, equally available on Node and Deno — configured with
-`captureRejections` for async error routing and channel-prefixed internally so a user event named
-`error` carries no special semantics. The typed facade (event map,
-wildcards, dual emit semantics) is entirely this package; the hot dispatch path is the platform's.
-On edge runtimes this requires Node compat (e.g. Cloudflare's `nodejs_compat`).
+natively-optimized event primitives — configured with `captureRejections` for async error routing
+and channel-prefixed internally so a user event named `error` carries no special semantics. The
+typed facade (event map, wildcards, dual emit semantics) is entirely this package; the hot dispatch
+path is the platform's.
 
 ## Install
 

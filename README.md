@@ -1,6 +1,6 @@
 # tasks
 
-The Rhythm background-work monorepo — everything that runs outside the request/response path:
+Background work for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native backend framework — everything that runs outside the request/response path:
 
 - **[`packages/events`](./packages/events)** — `@rhythmjs/events`: typed in-process event bus
   (announce). In-house dispatch, zero dependencies.

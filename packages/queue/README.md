@@ -1,6 +1,6 @@
 # @rhythmjs/queue
 
-Typed job queues for [Rhythm](https://github.com/rhythmjs/rhythm) on Bun: background work with retries, delays, priorities, and repeatable schedules — declared through a typed job map (the same discipline as `@rhythmjs/events`), served by a kernel module, processed by lifecycle-managed workers. In-house engines, no queue library: **in-memory by default**, and **Bun's native redis client** (`Bun.redis`) when you need distribution. If you want full BullMQ instead (stalled-job recovery, Job Schedulers, its ecosystem), [`@rhythmjs/bullmq`](../bullmq) serves the same typed surface on it.
+Typed job queues for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native backend framework: background work with retries, delays, priorities, and repeatable schedules — declared through a typed job map (the same discipline as `@rhythmjs/events`), served by a kernel module, processed by lifecycle-managed workers. In-house engines, no queue library: **in-memory by default**, and **Bun's native redis client** (`Bun.redis`) when you need distribution. If you want full BullMQ instead (stalled-job recovery, Job Schedulers, its ecosystem), [`@rhythmjs/bullmq`](../bullmq) serves the same typed surface on it.
 
 Queues and events are complementary, not interchangeable: an event **announces** (ephemeral broadcast to current listeners), a queue job **obligates** (at-least-once, processed by exactly one worker).
 

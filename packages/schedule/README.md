@@ -1,6 +1,6 @@
 # @rhythmjs/schedule
 
-Task scheduling for [Rhythm](https://github.com/rhythmjs/rhythm) on Bun: cron, interval, and
+Task scheduling for [Rhythm](https://github.com/rhythmjs/rhythm), the Bun-native backend framework: cron, interval, and
 timeout jobs declared as plain values, served by a kernel module, and driven by an in-process
 scheduler backed by a dependency-free, timezone-aware cron engine.
 
@@ -46,7 +46,7 @@ Job options: `timezone` (cron only, DST-correct), `overlap` (`"skip"` — the de
 - `state(name)` — `{ running, runs, lastRun?, lastError?, nextRun? }` — pairs naturally with a
   `HealthIndicator`.
 - `nextRun(name, from?)` — next occurrence (cron jobs; `null` otherwise).
-- `add(job)` / `remove(name)` — dynamic registry, NestJS `SchedulerRegistry`-style. A scheduler
+- `add(job)` / `remove(name)` — dynamic registry for jobs defined at runtime. A scheduler
   started earlier keeps its snapshot; restart it to pick up changes.
 - `jobs` — the registry.
 
@@ -71,9 +71,9 @@ new Cron("30 2 * * *", { timezone: "Europe/Paris" }).nextRun(); // Date | null, 
 
 ## Out of scope, by design
 
-Distributed one-instance locking across replicas (a pluggable lock-store follow-up, à la
-`@nestjs/locks`), persistent job queues (BullMQ territory), and platform-specific schedulers —
-this package is coupled to Bun on purpose.
+Distributed one-instance locking across replicas (a pluggable lock-store follow-up), persistent
+job queues (BullMQ territory), and platform-specific schedulers — this package is coupled to Bun
+on purpose.
 
 ## Development
 
