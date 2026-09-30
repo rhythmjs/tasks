@@ -1,6 +1,6 @@
 {
   "name": "@rhythmjs/bullmq",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "BullMQ-backed job queues for Rhythm: the same typed job map and kernel module as @rhythmjs/queue, on full BullMQ \u2014 Redis-durable jobs, stalled-job recovery, Job Schedulers, and the whole BullMQ option surface.",
   "keywords": [
     "background-jobs",
