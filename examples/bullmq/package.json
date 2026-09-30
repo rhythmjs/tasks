@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "@rhythmjs/bullmq": "workspace:*",
-    "@rhythmjs/rhythm": "^0.0.9"
+    "@rhythmjs/rhythm": "^0.0.11"
   }
 }

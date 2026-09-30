@@ -1,7 +1,7 @@
 {
   "name": "@rhythmjs/bullmq",
   "version": "0.0.1",
-  "description": "BullMQ-backed job queues for Rhythm: the same typed job map and kernel module as @rhythmjs/queue, on full BullMQ — Redis-durable jobs, stalled-job recovery, Job Schedulers, and the whole BullMQ option surface.",
+  "description": "BullMQ-backed job queues for Rhythm: the same typed job map and kernel module as @rhythmjs/queue, on full BullMQ \u2014 Redis-durable jobs, stalled-job recovery, Job Schedulers, and the whole BullMQ option surface.",
   "keywords": [
     "background-jobs",
     "bullmq",
@@ -48,10 +48,10 @@
     "bullmq": "^5.0.0"
   },
   "devDependencies": {
-    "@rhythmjs/rhythm": "^0.0.9"
+    "@rhythmjs/rhythm": "^0.0.11"
   },
   "peerDependencies": {
-    "@rhythmjs/rhythm": "^0.0.9"
+    "@rhythmjs/rhythm": "^0.0.11"
   },
   "engines": {
     "bun": ">=1.2.0"

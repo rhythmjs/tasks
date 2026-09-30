@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rhythmjs/rhythm": "^0.0.9",
+    "@rhythmjs/rhythm": "^0.0.11",
     "@rhythmjs/schedule": "workspace:*"
   }
 }
