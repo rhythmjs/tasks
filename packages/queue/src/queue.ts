@@ -130,27 +130,34 @@ export function createQueueService<TJobs extends JobMap>(options: QueueModuleOpt
 
       const loop = async (): Promise<void> => {
         while (!stopped) {
-          await armRepeats();
-          const job = await engine.take(Date.now());
-          if (job === null) {
-            await Bun.sleep(pollInterval);
-            continue;
-          }
-          active++;
-          job.attemptsMade++;
           try {
-            await dispatch(job);
-            await engine.record("completed");
-            processOptions.onCompleted?.(job.name, job.id);
-          } catch (error) {
-            if (job.attemptsMade < job.maxAttempts) {
-              await engine.requeue(job, Date.now() + retryDelay(job));
-            } else {
-              await engine.record("failed");
-              processOptions.onFailed?.(job.name, job.id, error);
+            await armRepeats();
+            const job = await engine.take(Date.now());
+            if (job === null) {
+              await Bun.sleep(pollInterval);
+              continue;
             }
-          } finally {
-            active--;
+            active++;
+            job.attemptsMade++;
+            try {
+              await dispatch(job);
+              await engine.record("completed");
+              processOptions.onCompleted?.(job.name, job.id);
+            } catch (error) {
+              if (job.attemptsMade < job.maxAttempts) {
+                await engine.requeue(job, Date.now() + retryDelay(job));
+              } else {
+                await engine.record("failed");
+                processOptions.onFailed?.(job.name, job.id, error);
+              }
+            } finally {
+              active--;
+            }
+          } catch (error) {
+            try {
+              processOptions.onError?.(error);
+            } catch {}
+            await Bun.sleep(pollInterval);
           }
         }
       };
