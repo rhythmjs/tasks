@@ -1,0 +1,29 @@
+{
+  "name": "tasks",
+  "private": true,
+  "description": "Rhythm background-work monorepo: @rhythmjs/events, @rhythmjs/schedule, and @rhythmjs/queue. Bun workspaces, bun test, bun build.",
+  "license": "ISC",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "build": "bun run --filter '@rhythmjs/*' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "oxlint packages/*/src examples/*/index.ts",
+    "fmt": "prettier --write \"packages/*/src/**/*.ts\" \"examples/*/index.ts\" \"packages/*/*.json\" \"examples/*/*.json\" \"*.json\"",
+    "fmt:check": "prettier --check \"packages/*/src/**/*.ts\" \"examples/*/index.ts\" \"packages/*/*.json\" \"examples/*/*.json\" \"*.json\"",
+    "check": "bun run fmt:check && bun run lint && bun run typecheck"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@types/node": "^26.6.3",
+    "oxlint": "^1.0.0",
+    "prettier": "^3.5.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  }
+}

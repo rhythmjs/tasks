@@ -1,0 +1,13 @@
+{
+  "name": "example-queue",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rhythmjs/queue": "workspace:*",
+    "@rhythmjs/rhythm": "^0.0.9"
+  }
+}

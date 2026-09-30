@@ -1,0 +1,57 @@
+{
+  "name": "@rhythmjs/events",
+  "version": "0.0.1",
+  "description": "Fully typed event bus for Rhythm on the native node:events engine (Bun-optimized): template-literal-typed wildcard subscriptions, dual emit semantics, and AbortSignal unsubscription. Zero dependencies.",
+  "keywords": [
+    "bun",
+    "event-bus",
+    "event-emitter",
+    "events",
+    "pubsub",
+    "rhythm",
+    "typed-events",
+    "wildcard"
+  ],
+  "homepage": "https://rhythm.js.org/events",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rhythmjs/tasks.git",
+    "directory": "packages/events"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/events.d.ts",
+      "default": "./dist/events.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun build src/events.ts src/types.ts --outdir dist --root src --format esm --target node --packages external && tsc -p tsconfig.build.json",
+    "prepublishOnly": "bun run typecheck && bun test && bun run build",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@rhythmjs/rhythm": "^0.0.9"
+  },
+  "peerDependencies": {
+    "@rhythmjs/rhythm": "^0.0.9"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "bun": ">=1.2.0"
+  }
+}

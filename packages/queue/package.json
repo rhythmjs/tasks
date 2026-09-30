@@ -1,0 +1,59 @@
+{
+  "name": "@rhythmjs/queue",
+  "version": "0.0.1",
+  "description": "Typed, BullMQ-backed job queues for Rhythm: a queue module on the kernel with a typed job map, named processors, repeatable schedules, and lifecycle-managed workers.",
+  "keywords": [
+    "background-jobs",
+    "bullmq",
+    "jobs",
+    "queue",
+    "redis",
+    "rhythm",
+    "worker"
+  ],
+  "homepage": "https://rhythm.js.org/queue",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rhythmjs/tasks.git",
+    "directory": "packages/queue"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/queue.d.ts",
+      "default": "./dist/queue.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun build src/queue.ts src/types.ts --outdir dist --root src --format esm --target node --packages external && tsc -p tsconfig.build.json",
+    "prepublishOnly": "bun run typecheck && bun test && bun run build",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "bullmq": "^6.0.0"
+  },
+  "devDependencies": {
+    "@rhythmjs/rhythm": "^0.0.9"
+  },
+  "peerDependencies": {
+    "@rhythmjs/rhythm": "^0.0.9"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "bun": ">=1.2.0"
+  }
+}

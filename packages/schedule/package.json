@@ -1,0 +1,84 @@
+{
+  "name": "@rhythmjs/schedule",
+  "version": "0.0.1",
+  "description": "Task scheduling for Rhythm: cron, interval, and timeout jobs on a kernel module, with croner-powered in-process scheduling and adapters for Deno.cron, Cloudflare Cron Triggers, and HTTP-triggered platforms.",
+  "keywords": [
+    "cloudflare",
+    "cron",
+    "croner",
+    "deno",
+    "interval",
+    "jobs",
+    "rhythm",
+    "scheduler",
+    "task-scheduling"
+  ],
+  "homepage": "https://rhythm.js.org/schedule",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rhythmjs/tasks.git",
+    "directory": "packages/schedule"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/schedule.d.ts",
+      "default": "./dist/schedule.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./adapters/timer": {
+      "types": "./dist/adapters/timer.d.ts",
+      "default": "./dist/adapters/timer.js"
+    },
+    "./adapters/deno": {
+      "types": "./dist/adapters/deno.d.ts",
+      "default": "./dist/adapters/deno.js"
+    },
+    "./adapters/cloudflare": {
+      "types": "./dist/adapters/cloudflare.d.ts",
+      "default": "./dist/adapters/cloudflare.js"
+    },
+    "./adapters/http": {
+      "types": "./dist/adapters/http.d.ts",
+      "default": "./dist/adapters/http.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun build src/schedule.ts src/types.ts src/adapters/timer.ts src/adapters/deno.ts src/adapters/cloudflare.ts src/adapters/http.ts --outdir dist --root src --format esm --target node --packages external && tsc -p tsconfig.build.json",
+    "prepublishOnly": "bun run typecheck && bun test && bun run build",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "croner": "^10.0.0"
+  },
+  "devDependencies": {
+    "@rhythmjs/rhythm": "^0.0.9",
+    "@rhythmjs/router": "^0.0.9"
+  },
+  "peerDependencies": {
+    "@rhythmjs/rhythm": "^0.0.9",
+    "@rhythmjs/router": "^0.0.9"
+  },
+  "peerDependenciesMeta": {
+    "@rhythmjs/router": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "bun": ">=1.2.0"
+  }
+}

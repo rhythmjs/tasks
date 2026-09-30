@@ -1,0 +1,46 @@
+// Cron, interval, and timeout jobs on the kernel, driven by the in-process timer adapter.
+// Runs for ~3.5 seconds, prints job state, then shuts down. Run with: bun index.ts
+import { Rhythm } from "@rhythmjs/rhythm";
+import { cronJob, cronPatterns, intervalJob, scheduleModule, timeoutJob } from "@rhythmjs/schedule";
+import { startScheduler } from "@rhythmjs/schedule/adapters/timer";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const app = new Rhythm().register(
+  scheduleModule.forRoot(
+    cronJob("tick", cronPatterns.everySecond, () => console.log("[cron] tick")),
+    intervalJob("heartbeat", 700, () => console.log("[interval] heartbeat")),
+    timeoutJob("warmup", 300, () => console.log("[timeout] warmed up (runs once)")),
+    cronJob("flaky", cronPatterns.everySecond, () => {
+      throw new Error("db unreachable");
+    }),
+  ),
+  ({ scheduleService }) => ({ scheduleService }),
+);
+
+await app.setup();
+const { scheduleService } = await app.run({});
+
+// Manual trigger — the universal entry point every adapter uses.
+await scheduleService.run("warmup");
+
+// nextRun / runDue work without any scheduler running.
+console.log("[nextRun] tick fires next at", scheduleService.nextRun("tick")?.toISOString());
+console.log(
+  "[runDue] due this minute:",
+  (await scheduleService.runDue()).map((result) => result.name),
+);
+
+const scheduler = startScheduler(scheduleService);
+await sleep(3500);
+scheduler.stop();
+
+for (const job of scheduleService.jobs) {
+  const state = scheduleService.state(job.name);
+  console.log(
+    `[state] ${job.name}: runs=${state.runs} lastError=${state.lastError ?? "none"} nextRun=${state.nextRun?.toISOString() ?? "-"}`,
+  );
+}
+
+await app.teardown();
+console.log("stopped cleanly");
