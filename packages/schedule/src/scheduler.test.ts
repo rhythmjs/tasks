@@ -46,6 +46,50 @@ describe("startScheduler", () => {
     expect(service.state("everysec").runs).toBe(ticks);
   });
 
+  test("removing an armed cron job stops it firing, with no unhandled rejections", async () => {
+    let ticks = 0;
+    const rejections: unknown[] = [];
+    const onRejection = (reason: unknown) => void rejections.push(reason);
+    process.on("unhandledRejection", onRejection);
+    const service = createScheduleService(cronJob("doomed", "* * * * * *", () => void ticks++));
+
+    const scheduler = startScheduler(service);
+    service.remove("doomed");
+    try {
+      await sleep(2200);
+    } finally {
+      scheduler.stop();
+      process.off("unhandledRejection", onRejection);
+    }
+
+    expect(ticks).toBe(0);
+    expect(rejections).toHaveLength(0);
+  });
+
+  test("removing an interval job clears its timer instead of rejecting every tick", async () => {
+    let ticks = 0;
+    const rejections: unknown[] = [];
+    const onRejection = (reason: unknown) => void rejections.push(reason);
+    process.on("unhandledRejection", onRejection);
+    const service = createScheduleService(
+      intervalJob("doomed", 20, () => void ticks++),
+      timeoutJob("gone", 20, () => void ticks++),
+    );
+
+    const scheduler = startScheduler(service);
+    service.remove("doomed");
+    service.remove("gone");
+    try {
+      await sleep(120);
+    } finally {
+      scheduler.stop();
+      process.off("unhandledRejection", onRejection);
+    }
+
+    expect(ticks).toBe(0);
+    expect(rejections).toHaveLength(0);
+  });
+
   test("stop() before a cron fire prevents the run and the re-arm", async () => {
     let ticks = 0;
     const service = createScheduleService(cronJob("everysec", "* * * * * *", () => void ticks++));

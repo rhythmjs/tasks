@@ -26,7 +26,10 @@ export function startScheduler(service: ScheduleService): Scheduler {
         : setTimeout(
             () => {
               timeouts.delete(timer);
-              void service.run(name).finally(() => arm(name, cron));
+              service.run(name).then(
+                () => arm(name, cron),
+                () => {},
+              );
             },
             Math.max(delay, 0),
           );
@@ -38,11 +41,15 @@ export function startScheduler(service: ScheduleService): Scheduler {
     if (job.kind === "cron") {
       arm(job.name, new Cron(job.schedule as string, job.timezone === undefined ? {} : { timezone: job.timezone }));
     } else if (job.kind === "interval") {
-      intervals.push(setInterval(() => void service.run(job.name), job.schedule as number));
+      const interval: ReturnType<typeof setInterval> = setInterval(
+        () => service.run(job.name).catch(() => clearInterval(interval)),
+        job.schedule as number,
+      );
+      intervals.push(interval);
     } else {
       const timer = setTimeout(() => {
         timeouts.delete(timer);
-        void service.run(job.name);
+        service.run(job.name).catch(() => {});
       }, job.schedule as number);
       timeouts.add(timer);
     }

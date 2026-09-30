@@ -47,7 +47,8 @@ Job options: `timezone` (cron only, DST-correct), `overlap` (`"skip"`, the defau
   `HealthIndicator`.
 - `nextRun(name, from?)`: next occurrence (cron jobs; `null` otherwise).
 - `add(job)` / `remove(name)`: dynamic registry for jobs defined at runtime. A scheduler
-  started earlier keeps its snapshot; restart it to pick up changes.
+  started earlier keeps its snapshot: restart it to pick up added jobs, while a removed job's
+  timer cancels itself on its next fire without running the handler.
 - `jobs`: the registry.
 
 ## Running the scheduler
