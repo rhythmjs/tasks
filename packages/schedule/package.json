@@ -1,6 +1,6 @@
 {
   "name": "@rhythmjs/schedule",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Task scheduling for Rhythm on Bun: cron, interval, and timeout jobs on a kernel module, with an in-process scheduler and a dependency-free, timezone-aware cron engine.",
   "keywords": [
     "bun",
