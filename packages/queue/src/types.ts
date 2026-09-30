@@ -34,6 +34,7 @@ export interface ProcessOptions {
   concurrency?: number;
   pollInterval?: number;
   onCompleted?: (name: string, jobId: string) => void;
+  onError?: (error: unknown) => void;
   onFailed?: (name: string, jobId: string, error: unknown) => void;
 }
 
