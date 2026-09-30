@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Rhythm } from "@rhythmjs/rhythm";
-import { createQueueService, queueModule, redisEngine, type RedisLike } from "./queue";
+import { createQueueService, memoryEngine, queueModule, redisEngine, type QueueEngine, type RedisLike } from "./queue";
 
 interface Jobs {
   "email.send": { to: string };
@@ -176,6 +176,63 @@ describe("memory engine service", () => {
     await until(() => failures.length === 1);
     await service.close();
     expect(String(failures[0])).toContain('no processor registered for job "report.build"');
+  });
+
+  test("a worker loop survives transient engine failures and keeps processing", async () => {
+    const inner = memoryEngine();
+    let flaky = 2;
+    const engine: QueueEngine = {
+      ...inner,
+      take: (now) => {
+        if (flaky > 0) {
+          flaky--;
+          throw new Error("connection reset");
+        }
+        return inner.take(now);
+      },
+    };
+    const service = createQueueService<Jobs>({ engine });
+    const sent: string[] = [];
+    const errors: unknown[] = [];
+
+    await service.add("email.send", { to: "ada@example.com" });
+    service.process(
+      { "email.send": (payload) => void sent.push(payload.to) },
+      { pollInterval: 10, onError: (error) => void errors.push(error) },
+    );
+
+    await until(() => sent.length === 1);
+    await service.close();
+    expect(errors.length).toBeGreaterThanOrEqual(2);
+    expect(String(errors[0])).toContain("connection reset");
+  });
+
+  test("a corrupted repeat spec is dropped instead of killing the worker", async () => {
+    const inner = memoryEngine();
+    let corrupted = true;
+    const engine: QueueEngine = {
+      ...inner,
+      claimDueRepeats: (now) => {
+        if (corrupted) {
+          corrupted = false;
+          return Promise.resolve([{ name: "report.build", payload: { day: "?" }, pattern: "60 * * * *", nextAt: 0 }]);
+        }
+        return inner.claimDueRepeats(now);
+      },
+    };
+    const service = createQueueService<Jobs>({ engine });
+    const sent: string[] = [];
+    const errors: unknown[] = [];
+
+    await service.add("email.send", { to: "ada@example.com" });
+    service.process(
+      { "email.send": (payload) => void sent.push(payload.to), "report.build": () => {} },
+      { pollInterval: 10, onError: (error) => void errors.push(error) },
+    );
+
+    await until(() => sent.length === 1);
+    await service.close();
+    expect(errors.length).toBeGreaterThanOrEqual(1);
   });
 });
 
