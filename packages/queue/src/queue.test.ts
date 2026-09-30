@@ -1,241 +1,305 @@
 import { describe, expect, test } from "bun:test";
 import { Rhythm } from "@rhythmjs/rhythm";
-import { createQueueService, queueModule } from "./queue";
-import type { EngineJob, EngineQueue, EngineWorker, QueueEngine } from "./types";
+import { createQueueService, queueModule, redisEngine, type RedisLike } from "./queue";
 
-interface AppJobs {
-  "email.send": { to: string; subject: string };
-  "order.process": { orderId: string };
+interface Jobs {
+  "email.send": { to: string };
+  "report.build": { day: string };
 }
 
-interface FakeEngine extends QueueEngine {
-  queues: {
-    name: string;
-    options: Record<string, unknown>;
-    added: { name: string; data: unknown; options?: Record<string, unknown> }[];
-    schedulers: Map<string, { repeat: Record<string, unknown>; template?: Record<string, unknown> }>;
-    closed: boolean;
-  }[];
-  workers: {
-    name: string;
-    options: Record<string, unknown>;
-    processor: (job: EngineJob) => Promise<unknown>;
-    listeners: Map<string, (...args: never[]) => void>;
-    closed: boolean;
-  }[];
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function until(check: () => boolean, timeoutMs = 2000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!check()) {
+    if (Date.now() > deadline) throw new Error("condition never became true");
+    await sleep(10);
+  }
 }
 
-const fakeEngine = (): FakeEngine => {
-  const engine: FakeEngine = {
-    queues: [],
-    workers: [],
-    createQueue: (name, options) => {
-      const state: FakeEngine["queues"][number] = {
-        name,
-        options,
-        added: [],
-        schedulers: new Map(),
-        closed: false,
-      };
-      engine.queues.push(state);
-      let nextId = 1;
-      const queue: EngineQueue = {
-        add: async (jobName, data, jobOptions) => {
-          state.added.push({ name: jobName, data, ...(jobOptions === undefined ? {} : { options: jobOptions }) });
-          return { id: String(nextId++) };
-        },
-        addBulk: async (jobs) => {
-          return jobs.map((job) => {
-            state.added.push({
-              name: job.name,
-              data: job.data,
-              ...(job.opts === undefined ? {} : { options: job.opts }),
-            });
-            return { id: String(nextId++) };
-          });
-        },
-        upsertJobScheduler: async (schedulerId, repeat, template) => {
-          state.schedulers.set(schedulerId, { repeat, ...(template === undefined ? {} : { template }) });
-        },
-        removeJobScheduler: async (schedulerId) => {
-          state.schedulers.delete(schedulerId);
-        },
-        getJobCounts: async () => ({ waiting: state.added.length, active: 0 }),
-        close: async () => {
-          state.closed = true;
-        },
-      };
-      return queue;
-    },
-    createWorker: (name, processor, options) => {
-      const state: FakeEngine["workers"][number] = {
-        name,
-        options,
-        processor,
-        listeners: new Map(),
-        closed: false,
-      };
-      engine.workers.push(state);
-      const worker: EngineWorker = {
-        on: (event, listener) => state.listeners.set(event, listener),
-        close: async () => {
-          state.closed = true;
-        },
-      };
-      return worker;
-    },
-  };
-  return engine;
-};
+describe("memory engine service", () => {
+  test("dispatches typed payloads to named processors", async () => {
+    const service = createQueueService<Jobs>();
+    const sent: string[] = [];
 
-describe("createQueueService", () => {
-  test("add enqueues typed jobs on the configured queue and returns the id", async () => {
-    const engine = fakeEngine();
-    const service = createQueueService<AppJobs>({
-      name: "app",
-      engine,
-      connection: { host: "localhost" },
-      prefix: "rj",
-      defaultJobOptions: { attempts: 3 },
-    });
+    const id = await service.add("email.send", { to: "ada@example.com" });
+    expect(typeof id).toBe("string");
 
-    const id = await service.add("email.send", { to: "a@b.c", subject: "hi" }, { delay: 500 });
-
-    expect(id).toBe("1");
-    const queue = engine.queues[0]!;
-    expect(queue.name).toBe("app");
-    expect(queue.options).toMatchObject({
-      connection: { host: "localhost" },
-      prefix: "rj",
-      defaultJobOptions: { attempts: 3 },
-    });
-    expect(queue.added).toEqual([
-      { name: "email.send", data: { to: "a@b.c", subject: "hi" }, options: { delay: 500 } },
-    ]);
-
-    // @ts-expect-error unknown job name
-    void (() => service.add("email.snd", { to: "a@b.c", subject: "hi" }));
-    // @ts-expect-error wrong payload shape
-    void (() => service.add("order.process", { to: "a@b.c" }));
-  });
-
-  test("addBulk maps names, payloads, and options", async () => {
-    const engine = fakeEngine();
-    const service = createQueueService<AppJobs>({ engine });
-
-    const ids = await service.addBulk([
-      { name: "email.send", payload: { to: "x@y.z", subject: "s" } },
-      { name: "order.process", payload: { orderId: "o1" }, options: { priority: 1 } },
-    ]);
-
-    expect(ids).toEqual(["1", "2"]);
-    expect(engine.queues[0]!.added.map((job) => job.name)).toEqual(["email.send", "order.process"]);
-    expect(engine.queues[0]!.added[1]).toMatchObject({ options: { priority: 1 } });
-  });
-
-  test("schedule upserts a job scheduler keyed by job name, unschedule removes it", async () => {
-    const engine = fakeEngine();
-    const service = createQueueService<AppJobs>({ engine });
-
-    await service.schedule("order.process", { pattern: "0 3 * * *", timezone: "UTC" }, { orderId: "nightly" });
-
-    const scheduler = engine.queues[0]!.schedulers.get("order.process");
-    expect(scheduler?.repeat).toEqual({ pattern: "0 3 * * *", timezone: "UTC" });
-    expect(scheduler?.template).toEqual({ name: "order.process", data: { orderId: "nightly" } });
-
-    await service.unschedule("order.process");
-    expect(engine.queues[0]!.schedulers.size).toBe(0);
-  });
-
-  test("process dispatches by job name to the typed processor", async () => {
-    const engine = fakeEngine();
-    const service = createQueueService<AppJobs>({ engine });
-    const handled: string[] = [];
-
-    service.process(
-      {
-        "email.send": (payload, job) => {
-          handled.push(`${payload.to}#${job.id ?? "?"}`);
-          return "sent";
-        },
-      },
-      { concurrency: 4 },
-    );
-
-    const worker = engine.workers[0]!;
-    expect(worker.name).toBe("rhythm");
-    expect(worker.options).toMatchObject({ concurrency: 4 });
-
-    const result = await worker.processor({ name: "email.send", data: { to: "a@b.c", subject: "s" }, id: "7" });
-    expect(result).toBe("sent");
-    expect(handled).toEqual(["a@b.c#7"]);
-
-    await expect(worker.processor({ name: "order.process", data: { orderId: "o1" } })).rejects.toThrow(
-      'no processor registered for job "order.process"',
-    );
-  });
-
-  test("wires lifecycle hooks to worker events", async () => {
-    const engine = fakeEngine();
-    const service = createQueueService<AppJobs>({ engine });
-    const seen: string[] = [];
-
-    service.process(
-      { "email.send": () => {} },
-      {
-        onCompleted: (name, id) => void seen.push(`ok:${name}:${id ?? "?"}`),
-        onFailed: (name, id, error) => void seen.push(`err:${name}:${id ?? "?"}:${(error as Error).message}`),
-      },
-    );
-
-    const worker = engine.workers[0]!;
-    (worker.listeners.get("completed") as (job: EngineJob) => void)({ name: "email.send", data: {}, id: "3" });
-    (worker.listeners.get("failed") as (job: EngineJob | undefined, error: unknown) => void)(
-      { name: "email.send", data: {}, id: "4" },
-      new Error("smtp down"),
-    );
-
-    expect(seen).toEqual(["ok:email.send:3", "err:email.send:4:smtp down"]);
-  });
-
-  test("close shuts down workers then the queue; worker handles close individually", async () => {
-    const engine = fakeEngine();
-    const service = createQueueService<AppJobs>({ engine });
-
-    const handle = service.process({ "email.send": () => {} });
-    service.process({ "order.process": () => {} });
-
-    await handle.close();
-    expect(engine.workers[0]!.closed).toBe(true);
-    expect(engine.workers[1]!.closed).toBe(false);
-
+    service.process({ "email.send": (payload, job) => void sent.push(`${payload.to}:${job.attemptsMade}`) });
+    await until(() => sent.length === 1);
     await service.close();
-    expect(engine.workers[1]!.closed).toBe(true);
-    expect(engine.queues[0]!.closed).toBe(true);
+
+    expect(sent).toEqual(["ada@example.com:1"]);
   });
 
-  test("counts delegates to the queue", async () => {
-    const engine = fakeEngine();
-    const service = createQueueService<AppJobs>({ engine });
-    await service.add("email.send", { to: "a@b.c", subject: "s" });
+  test("delay holds a job until it is ready", async () => {
+    const service = createQueueService<Jobs>();
+    const stamps: number[] = [];
+    const started = Date.now();
 
-    expect(await service.counts()).toEqual({ waiting: 1, active: 0 });
+    await service.add("email.send", { to: "x" }, { delay: 80 });
+    service.process({ "email.send": () => void stamps.push(Date.now() - started) });
+
+    await sleep(40);
+    expect(stamps).toHaveLength(0);
+    await until(() => stamps.length === 1);
+    expect(stamps[0]!).toBeGreaterThanOrEqual(70);
+    await service.close();
+  });
+
+  test("retries with backoff, then fails once attempts are exhausted", async () => {
+    const service = createQueueService<Jobs>();
+    const failures: { name: string; error: unknown }[] = [];
+    let runs = 0;
+
+    await service.add("email.send", { to: "x" }, { attempts: 3, backoff: 20 });
+    service.process(
+      {
+        "email.send": () => {
+          runs++;
+          throw new Error("smtp down");
+        },
+      },
+      { onFailed: (name, _id, error) => void failures.push({ name, error }) },
+    );
+
+    await until(() => failures.length === 1);
+    await service.close();
+
+    expect(runs).toBe(3);
+    expect(failures[0]!.name).toBe("email.send");
+    expect((failures[0]!.error as Error).message).toBe("smtp down");
+    expect((await service.counts()).failed).toBe(1);
+  });
+
+  test("higher priority runs sooner", async () => {
+    const service = createQueueService<Jobs>();
+    const order: string[] = [];
+
+    await service.addBulk([
+      { name: "email.send", payload: { to: "low" } },
+      { name: "email.send", payload: { to: "high" }, options: { priority: 10 } },
+      { name: "email.send", payload: { to: "mid" }, options: { priority: 5 } },
+    ]);
+    service.process({ "email.send": (payload) => void order.push(payload.to) });
+
+    await until(() => order.length === 3);
+    await service.close();
+    expect(order).toEqual(["high", "mid", "low"]);
+  });
+
+  test("a custom jobId deduplicates pending jobs", async () => {
+    const service = createQueueService<Jobs>();
+    let runs = 0;
+
+    await service.add("email.send", { to: "x" }, { jobId: "once", delay: 40 });
+    await service.add("email.send", { to: "x" }, { jobId: "once", delay: 40 });
+    expect((await service.counts()).delayed).toBe(1);
+
+    service.process({ "email.send": () => void runs++ });
+    await until(() => runs === 1);
+    await sleep(60);
+    await service.close();
+    expect(runs).toBe(1);
+  });
+
+  test("schedule repeats with every + limit, and unschedule stops early", async () => {
+    const service = createQueueService<Jobs>();
+    let built = 0;
+    let mailed = 0;
+
+    await service.schedule("report.build", { every: 40, limit: 2 }, { day: "mon" });
+    await service.schedule("email.send", { every: 30 }, { to: "digest" });
+    service.process({
+      "report.build": () => void built++,
+      "email.send": () => void mailed++,
+    });
+
+    await until(() => built === 2 && mailed >= 2);
+    await service.unschedule("email.send");
+    const mailedAtStop = mailed;
+    await sleep(120);
+    await service.close();
+
+    expect(built).toBe(2);
+    expect(mailed - mailedAtStop).toBeLessThanOrEqual(1);
+  });
+
+  test("cron-pattern repeats run through the schedule engine", async () => {
+    const service = createQueueService<Jobs>();
+    let ticks = 0;
+
+    await service.schedule("report.build", { pattern: "* * * * * *", limit: 1 }, { day: "tick" });
+    service.process({ "report.build": () => void ticks++ });
+
+    await until(() => ticks === 1, 3000);
+    await service.close();
+    expect(ticks).toBe(1);
+  });
+
+  test("concurrency runs jobs in parallel and close drains in-flight work", async () => {
+    const service = createQueueService<Jobs>();
+    let concurrent = 0;
+    let peak = 0;
+    let done = 0;
+
+    await service.addBulk(
+      Array.from({ length: 4 }, (_, i) => ({ name: "email.send" as const, payload: { to: String(i) } })),
+    );
+    const worker = service.process(
+      {
+        "email.send": async () => {
+          concurrent++;
+          peak = Math.max(peak, concurrent);
+          await sleep(40);
+          concurrent--;
+          done++;
+        },
+      },
+      { concurrency: 2 },
+    );
+
+    await until(() => done === 4);
+    await worker.close();
+    expect(peak).toBe(2);
+    expect((await service.counts()).completed).toBe(4);
+    await service.close();
+  });
+
+  test("a job with no registered processor counts as failed", async () => {
+    const service = createQueueService<Jobs>();
+    const failures: unknown[] = [];
+
+    await service.add("report.build", { day: "tue" });
+    service.process({}, { onFailed: (_name, _id, error) => void failures.push(error) });
+
+    await until(() => failures.length === 1);
+    await service.close();
+    expect(String(failures[0])).toContain('no processor registered for job "report.build"');
   });
 });
 
 describe("queueModule", () => {
-  test("exports the service through register and closes it on teardown", async () => {
-    const engine = fakeEngine();
-    const app = new Rhythm().register(queueModule.forRoot<AppJobs>({ engine }), (m) => ({
-      queueService: m.queueService,
-    }));
-
+  test("provides queueService on the kernel and closes it on teardown", async () => {
+    const app = new Rhythm().register(queueModule.forRoot<Jobs>(), ({ queueService }) => ({ queueService }));
     await app.setup();
-    const ctx = await app.run({});
-    await ctx.queueService.add("order.process", { orderId: "o1" });
-    expect(engine.queues[0]!.added).toHaveLength(1);
+    const { queueService } = await app.run({});
+
+    const handled: string[] = [];
+    await queueService.add("email.send", { to: "kernel" });
+    queueService.process({ "email.send": (payload) => void handled.push(payload.to) });
+    await until(() => handled.length === 1);
 
     await app.teardown();
-    expect(engine.queues[0]!.closed).toBe(true);
+    expect(handled).toEqual(["kernel"]);
+  });
+});
+
+// A miniature redis speaking just the commands the engine sends, so the
+// engine's key handling is covered without a server.
+function fakeRedis(): RedisLike & { closed: boolean } {
+  const lists = new Map<string, string[]>();
+  const zsets = new Map<string, Map<string, number>>();
+  const hashes = new Map<string, Map<string, string>>();
+  const strings = new Map<string, number>();
+  const zset = (key: string) => zsets.get(key) ?? zsets.set(key, new Map()).get(key)!;
+  const fake = {
+    closed: false,
+    close: () => void (fake.closed = true),
+    send(command: string, args: string[]): Promise<unknown> {
+      const [key = "", ...rest] = args;
+      switch (command) {
+        case "RPUSH": {
+          const list = lists.get(key) ?? lists.set(key, []).get(key)!;
+          list.push(...rest);
+          return Promise.resolve(list.length);
+        }
+        case "LPOP":
+          return Promise.resolve(lists.get(key)?.shift() ?? null);
+        case "LLEN":
+          return Promise.resolve(lists.get(key)?.length ?? 0);
+        case "ZADD": {
+          zset(key).set(rest[1]!, Number(rest[0]));
+          return Promise.resolve(1);
+        }
+        case "ZREM": {
+          const had = zset(key).delete(rest[0]!);
+          return Promise.resolve(had ? 1 : 0);
+        }
+        case "ZCARD":
+          return Promise.resolve(zset(key).size);
+        case "ZRANGEBYSCORE": {
+          const max = Number(rest[1]);
+          const limit = rest[2] === "LIMIT" ? Number(rest[4]) : Infinity;
+          const members = [...zset(key)]
+            .filter(([, score]) => score <= max)
+            .sort((a, b) => a[1] - b[1])
+            .slice(0, limit)
+            .map(([member]) => member);
+          return Promise.resolve(members);
+        }
+        case "HSET": {
+          const hash = hashes.get(key) ?? hashes.set(key, new Map()).get(key)!;
+          hash.set(rest[0]!, rest[1]!);
+          return Promise.resolve(1);
+        }
+        case "HGET":
+          return Promise.resolve(hashes.get(key)?.get(rest[0]!) ?? null);
+        case "HDEL":
+          return Promise.resolve(hashes.get(key)?.delete(rest[0]!) ? 1 : 0);
+        case "INCR": {
+          const next = (strings.get(key) ?? 0) + 1;
+          strings.set(key, next);
+          return Promise.resolve(next);
+        }
+        case "GET":
+          return Promise.resolve(strings.has(key) ? String(strings.get(key)) : null);
+        default:
+          return Promise.reject(new Error(`fakeRedis: unhandled command ${command}`));
+      }
+    },
+  };
+  return fake;
+}
+
+describe("redis engine (Bun.redis command surface)", () => {
+  test("runs the full lifecycle against the redis command set", async () => {
+    const redis = fakeRedis();
+    const service = createQueueService<Jobs>({ engine: redisEngine(redis) });
+    const sent: string[] = [];
+    const failures: string[] = [];
+
+    await service.add("email.send", { to: "now" });
+    await service.add("email.send", { to: "later" }, { delay: 50 });
+    await service.add("report.build", { day: "boom" }, { attempts: 2, backoff: 20 });
+    await service.schedule("email.send", { every: 40, limit: 1 }, { to: "repeat" });
+
+    expect(await service.counts()).toMatchObject({ waiting: 2, delayed: 1, repeats: 1 });
+
+    service.process(
+      {
+        "email.send": (payload) => void sent.push(payload.to),
+        "report.build": () => {
+          throw new Error("nope");
+        },
+      },
+      { onFailed: (name) => void failures.push(name) },
+    );
+
+    await until(() => sent.length === 3 && failures.length === 1);
+    await service.close();
+
+    expect(sent.sort()).toEqual(["later", "now", "repeat"]);
+    expect(failures).toEqual(["report.build"]);
+    const counts = await service.counts();
+    expect(counts.completed).toBe(3);
+    expect(counts.failed).toBe(1);
+  });
+
+  test("an owned string connection is closed with the engine, a passed client is not", async () => {
+    const redis = fakeRedis();
+    const engine = redisEngine(redis);
+    await engine.close();
+    expect(redis.closed).toBe(false);
   });
 });

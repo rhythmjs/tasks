@@ -1,19 +1,13 @@
 # @rhythmjs/queue
 
-Typed, [BullMQ](https://docs.bullmq.io)-backed job queues for
-[Rhythm](https://github.com/rhythmjs/rhythm): durable background work with retries, delays,
-priorities, and repeatable schedules — declared through a typed job map (the same discipline as
-`@rhythmjs/events`), served by a kernel module, processed by lifecycle-managed workers. Runs on Node
-and Bun; requires Redis.
+Typed job queues for [Rhythm](https://github.com/rhythmjs/rhythm) on Bun: background work with retries, delays, priorities, and repeatable schedules — declared through a typed job map (the same discipline as `@rhythmjs/events`), served by a kernel module, processed by lifecycle-managed workers. In-house engines, no queue library: **in-memory by default**, and **Bun's native redis client** (`Bun.redis`) when you need distribution. If you want full BullMQ instead (stalled-job recovery, Job Schedulers, its ecosystem), [`@rhythmjs/bullmq`](../bullmq) serves the same typed surface on it.
 
-Queues and events are complementary, not interchangeable: an event **announces** (ephemeral
-broadcast to current listeners), a queue job **obligates** (durable, at-least-once, processed by
-exactly one worker).
+Queues and events are complementary, not interchangeable: an event **announces** (ephemeral broadcast to current listeners), a queue job **obligates** (at-least-once, processed by exactly one worker).
 
 ## Install
 
 ```sh
-pnpm add @rhythmjs/queue
+bun add @rhythmjs/queue
 ```
 
 ## The job map is the contract
@@ -37,15 +31,14 @@ import type { AppJobs } from "./jobs";
 const app = new Rhythm().register(
   queueModule.forRoot<AppJobs>({
     name: "app",
-    connection: { host: "127.0.0.1", port: 6379 },
+    redis: process.env.REDIS_URL, // omit for the in-memory engine
     defaultJobOptions: { attempts: 3, backoff: { type: "exponential", delay: 1000 } },
   }),
   ({ queueService }) => ({ queueService }),
 );
 ```
 
-The module owns the BullMQ lifecycle: workers and the queue close on the kernel's `teardown()`
-(reverse provider order — plays with `gracefulShutdown` automatically).
+The module owns the lifecycle: workers and the engine close on the kernel's `teardown()` (reverse provider order — plays with `gracefulShutdown` automatically).
 
 ## Producing
 
@@ -60,72 +53,55 @@ await queueService.addBulk([
 ]);
 ```
 
-`JobOptions` passes through to BullMQ: `delay`, `attempts`, `backoff`, `priority`,
-`removeOnComplete`/`removeOnFail`, `jobId`, and anything else BullMQ accepts.
+`JobOptions`: `delay` (ms), `attempts` (total, default 1), `backoff` (fixed ms, or `{ type: "fixed" | "exponential", delay }`), `priority` (higher runs sooner), `jobId` (custom id; pending duplicates are dropped).
 
 ## Processing
 
 ```ts
 const worker = queueService.process(
   {
-    "email.send": async (payload, job) => {
-      await mailer.send(payload.to, payload.subject); // payload fully typed per job name
-    },
-    "order.process": async (payload) => { ... },
+    "email.send": async (payload, job) => sendMail(payload), // payload typed per name
+    "order.process": async (payload, job) => fulfil(payload.orderId),
   },
   {
-    concurrency: 8,
-    onCompleted: (name, id) => log.info({ name, id }, "job done"),
-    onFailed: (name, id, error) => log.error({ name, id, error }, "job failed"),
+    concurrency: 4,
+    onCompleted: (name, id) => metrics.increment(`jobs.${name}.ok`),
+    onFailed: (name, id, error) => log.error(`job ${name}#${id} exhausted retries`, error), // fires once, after the last attempt
   },
 );
-
-await worker.close(); // or let service/module teardown do it
+await worker.close(); // drains in-flight jobs
 ```
 
-One BullMQ queue, jobs dispatched to processors by name; a job with no registered processor fails
-loudly (and lands in BullMQ's retry/failed flow like any other error).
+One queue, jobs dispatched to processors by name; a job with no registered processor fails loudly and lands in the retry/failed flow like any other error.
 
 ## Repeatable schedules
 
 ```ts
 await queueService.schedule("order.process", { pattern: "0 3 * * *", timezone: "UTC" }, { orderId: "nightly" });
+await queueService.schedule("email.send", { every: 60_000, limit: 10 }, { to: "digest@x", subject: "digest" });
 await queueService.unschedule("order.process");
 ```
 
-Backed by BullMQ Job Schedulers (Redis-coordinated), this **fires once across any number of app
-replicas** — the distributed-cron answer that `@rhythmjs/schedule`'s in-process timer adapter
-deliberately leaves out. Use `@rhythmjs/schedule` for single-instance and platform-scheduled
-(Cloudflare/Deno/HTTP) cron; use this for replica-safe recurring jobs with retry semantics.
+`pattern` runs through `@rhythmjs/schedule`'s in-house, timezone-aware cron engine. On the redis engine, due repeats are claimed with an atomic `ZREM`, so a schedule **fires once across any number of app replicas**.
 
-## Bridging from events
+## Engines
 
-The `(payload, event)` listener signature maps directly onto job names:
+- **`memoryEngine()`** (default) — in-process, zero dependencies. Perfect for tests, CLIs, and single-instance apps.
+- **`redisEngine(connection?, { prefix? })`** — distributed, on Bun's native redis client: pass a `redis://` URL (the engine owns and closes the client), an existing `Bun.RedisClient`, or nothing to use `Bun.redis` (`REDIS_URL`). Ready work lives in a list, delayed and repeating work in sorted sets scored by readiness; claims go through `ZREM` so concurrent workers never double-take.
 
-```ts
-eventBus.on("order.**", (payload, event) => void queueService.add(event, payload));
-```
+Both implement the structural `QueueEngine` contract (`add`/`take`/`requeue`/`record`/repeat methods/`counts`); tests can substitute their own, and the redis engine itself accepts any `RedisLike` (`send`/`close`).
 
-Payloads cross Redis as JSON — keep them serializable (no functions, class instances, or cycles).
-
-## Testing without Redis
-
-The BullMQ classes sit behind a structural `QueueEngine` (`createQueue`/`createWorker`), injectable
-like the proxy middleware's `fetch`:
+## Introspection
 
 ```ts
-queueModule.forRoot<AppJobs>({ engine: fakeEngine }); // in-memory fake, no Redis — see queue.test.ts
+await queueService.counts(); // { waiting, delayed, completed, failed, repeats, active }
 ```
-
-`createQueueService(options)` builds the service without the module. Types
-(`QueueService`, `JobMap`, `JobOptions`, `JobProcessors`, `QueueContext`, the engine contract) also
-ship type-only from `@rhythmjs/queue/types`.
 
 ## Development
 
 ```sh
-pnpm install
-pnpm test       # vp test — no Redis needed
-pnpm typecheck  # tsc --noEmit
-pnpm build      # vp pack
+bun install
+bun test           # bun test runner — in-memory and redis-command-surface suites, no server needed
+bun run typecheck  # tsc --noEmit
+bun run build      # bun build + tsc declarations
 ```

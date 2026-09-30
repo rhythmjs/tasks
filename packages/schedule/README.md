@@ -1,20 +1,17 @@
 # @rhythmjs/schedule
 
-Task scheduling for [Rhythm](https://github.com/rhythmjs/rhythm): cron, interval, and timeout jobs
-declared as plain values, served by a kernel module, and driven by whichever adapter matches your
-runtime — an in-process scheduler (powered by [croner](https://github.com/hexagon/croner)) for
-long-lived servers, `Deno.cron` for Deno Deploy, a `scheduled` handler for Cloudflare Cron Triggers,
-and authenticated HTTP routes for Vercel, Netlify, Kubernetes CronJobs, or anything else that can
-call an endpoint.
+Task scheduling for [Rhythm](https://github.com/rhythmjs/rhythm) on Bun: cron, interval, and
+timeout jobs declared as plain values, served by a kernel module, and driven by an in-process
+scheduler backed by a dependency-free, timezone-aware cron engine.
 
-The design splits _what runs_ from _who decides when_: every trigger — timer, platform event, HTTP
-call, or your own code — reduces to `scheduleService.run(name)`, so job semantics (overlap skipping,
-error capture, per-job state) live in one place and every adapter stays thin.
+The design splits _what runs_ from _who decides when_: every trigger — the scheduler or your own
+code — reduces to `scheduleService.run(name)`, so job semantics (overlap skipping, error capture,
+per-job state) live in one place and the scheduler stays thin.
 
 ## Install
 
 ```sh
-pnpm add @rhythmjs/schedule
+bun add @rhythmjs/schedule
 ```
 
 ## Defining jobs and the module
@@ -35,84 +32,54 @@ const app = new Rhythm().register(scheduleModule.forRoot(...jobs), ({ scheduleSe
 }));
 ```
 
-Job options: `timezone` (cron only, DST-correct via croner), `overlap` (`"skip"` — the default — or
+Job options: `timezone` (cron only, DST-correct), `overlap` (`"skip"` — the default — or
 `"allow"`), `disabled`. `cronPatterns` covers the common expressions (`everyMinute`, `hourly`,
-`daily`, …); croner's extended syntax (seconds field, `L`, `W`, `#`) is available too.
+`daily`, …); patterns take 5 fields, an optional leading seconds field (6 fields), names
+(`jan-dec`, `sun-sat`), lists, ranges, steps, and `@daily`-style aliases.
 
 ## `scheduleService`
 
-- `run(name)` — execute one job now: the universal entry point every adapter calls. Skips when
-  `disabled` or already `running` (with `overlap: "skip"`), catches errors into the result and
-  state, returns `{ name, ran, durationMs?, error? }`.
-- `runDue(date?)` — run every enabled cron job due at that minute; what HTTP-triggered platforms
-  call.
+- `run(name)` — execute one job now: the universal entry point. Skips when `disabled` or already
+  `running` (with `overlap: "skip"`), catches errors into the result and state, returns
+  `{ name, ran, durationMs?, error? }`.
+- `runDue(date?)` — run every enabled cron job due at that minute.
 - `state(name)` — `{ running, runs, lastRun?, lastError?, nextRun? }` — pairs naturally with a
   `HealthIndicator`.
 - `nextRun(name, from?)` — next occurrence (cron jobs; `null` otherwise).
-- `add(job)` / `remove(name)` — dynamic registry, NestJS `SchedulerRegistry`-style. Adapters started
-  earlier keep their snapshot; restart them to pick up changes.
+- `add(job)` / `remove(name)` — dynamic registry, NestJS `SchedulerRegistry`-style. A scheduler
+  started earlier keeps its snapshot; restart it to pick up changes.
 - `jobs` — the registry.
 
-## Adapters
-
-**Long-lived servers (Node, Bun, self-hosted Deno)** — the process owns the clock:
+## Running the scheduler
 
 ```ts
-import { startScheduler } from "@rhythmjs/schedule/adapters/timer";
+import { startScheduler } from "@rhythmjs/schedule/scheduler";
 
-const scheduler = startScheduler(scheduleService); // croner cron timers + intervals + timeouts
+const scheduler = startScheduler(scheduleService); // cron timers + intervals + timeouts
 scheduler.stop(); // tie into gracefulShutdown / provider dispose
 ```
 
-**Deno Deploy** — hand jobs to the runtime's own scheduler:
+## The cron engine
+
+The engine behind `nextRun` is exported on its own:
 
 ```ts
-import { registerDenoCron } from "@rhythmjs/schedule/adapters/deno";
+import { Cron } from "@rhythmjs/schedule/cron";
 
-registerDenoCron(scheduleService); // one Deno.cron entry per enabled cron job
+new Cron("30 2 * * *", { timezone: "Europe/Paris" }).nextRun(); // Date | null, DST gaps skipped
 ```
-
-**Cloudflare Workers** — the platform clock calls `scheduled()`; declare the same expressions in
-`wrangler.toml`:
-
-```ts
-import { toScheduledHandler } from "@rhythmjs/schedule/adapters/cloudflare";
-
-export default {
-  fetch: toFetchHandler(app),
-  scheduled: toScheduledHandler(scheduleService), // matches event.cron, falls back to runDue()
-};
-```
-
-**Vercel / Netlify / Kubernetes / EventBridge→API** — anything that can call an endpoint
-(`@rhythmjs/router` optional peer):
-
-```ts
-import { cronRoutes } from "@rhythmjs/schedule/adapters/http";
-
-router.use(cronRoutes(scheduleService, { secret: process.env.CRON_SECRET }).middleware());
-// GET  /cron            → job list with state
-// GET|POST /cron/due    → run everything due this minute (one catch-all platform schedule)
-// GET|POST /cron/jobs/:name → run one job (one platform schedule per job)
-```
-
-All routes require `Authorization: Bearer <secret>` when `secret` is set — the header Vercel Cron
-sends from `CRON_SECRET`.
-
-On serverless platforms the schedule is declared twice by nature (in code and in
-`wrangler.toml`/`vercel.json` — the platform reads config, not code); the Cloudflare adapter's
-exact-match-then-`runDue` dispatch tolerates drift between the two.
 
 ## Out of scope, by design
 
 Distributed one-instance locking across replicas (a pluggable lock-store follow-up, à la
-`@nestjs/locks`), persistent job queues (BullMQ territory), and generating platform schedule config.
+`@nestjs/locks`), persistent job queues (BullMQ territory), and platform-specific schedulers —
+this package is coupled to Bun on purpose.
 
 ## Development
 
 ```sh
-pnpm install
-pnpm test       # vp test
-pnpm typecheck  # tsc --noEmit
-pnpm build      # vp pack
+bun install
+bun test
+bun run typecheck  # tsc --noEmit
+bun run build      # bun build + tsc declarations
 ```

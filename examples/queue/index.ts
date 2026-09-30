@@ -1,6 +1,7 @@
-// Typed BullMQ queue: produce, process by job name, repeatable schedule, lifecycle teardown.
-// Requires Redis:  docker run --rm -p 6379:6379 redis
-// Run with: bun index.ts   (REDIS_HOST / REDIS_PORT override localhost:6379)
+// Typed job queue on the kernel: produce, process by job name, repeatable
+// schedule, lifecycle teardown. Runs in-process by default — pass
+// `redis: "redis://localhost:6379"` (Bun's native redis client) to distribute.
+// Run with: bun index.ts
 import { Rhythm } from "@rhythmjs/rhythm";
 import { queueModule } from "@rhythmjs/queue";
 
@@ -9,23 +10,11 @@ interface AppJobs {
   "order.process": { orderId: string };
 }
 
-const host = process.env.REDIS_HOST ?? "127.0.0.1";
-const port = Number(process.env.REDIS_PORT ?? 6379);
-
-// Preflight so the example fails friendly instead of retrying forever.
-try {
-  const socket = await Bun.connect({ hostname: host, port, socket: { data() {} } });
-  socket.end();
-} catch {
-  console.error(`No Redis at ${host}:${port} — start one with: docker run --rm -p 6379:6379 redis`);
-  process.exit(1);
-}
-
 const app = new Rhythm().register(
   queueModule.forRoot<AppJobs>({
     name: "example",
-    connection: { host, port },
-    defaultJobOptions: { attempts: 2, removeOnComplete: true, removeOnFail: true },
+    defaultJobOptions: { attempts: 2, backoff: 100 },
+    ...(process.env.REDIS_URL === undefined ? {} : { redis: process.env.REDIS_URL }),
   }),
   ({ queueService }) => ({ queueService }),
 );
@@ -40,16 +29,16 @@ queueService.process(
       console.log(`[worker] sending mail to ${payload.to}: "${payload.subject}"`);
     },
     "order.process": async (payload, job) => {
-      console.log(`[worker] processing order ${payload.orderId} (job ${job.id ?? "?"})`);
+      console.log(`[worker] processing order ${payload.orderId} (job ${job.id}, attempt ${job.attemptsMade})`);
     },
   },
   {
     concurrency: 4,
     onCompleted: (name, id) => {
-      console.log(`[completed] ${name} #${id ?? "?"}`);
-      done.add(`${name}:${id ?? "?"}`);
+      console.log(`[completed] ${name} #${id.slice(0, 8)}`);
+      done.add(`${name}:${id}`);
     },
-    onFailed: (name, id, error) => console.error(`[failed] ${name} #${id ?? "?"}:`, error),
+    onFailed: (name, id, error) => console.error(`[failed] ${name} #${id.slice(0, 8)}:`, error),
   },
 );
 
@@ -60,15 +49,15 @@ await queueService.addBulk([
   { name: "order.process", payload: { orderId: "o-2" } },
 ]);
 
-// Replica-safe repeatable schedule (BullMQ Job Scheduler) — registered, shown, removed.
+// Repeatable schedule — cron patterns run through @rhythmjs/schedule's engine.
 await queueService.schedule("order.process", { pattern: "0 3 * * *", timezone: "UTC" }, { orderId: "nightly" });
 console.log("[schedule] nightly order.process registered");
 await queueService.unschedule("order.process");
 
 const deadline = Date.now() + 5000;
-while (done.size < 4 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+while (done.size < 4 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
 console.log("[counts]", await queueService.counts());
 
-await app.teardown(); // closes workers, then the queue
+await app.teardown(); // closes workers, then the engine
 console.log("closed cleanly");
 process.exit(0);

@@ -1,4 +1,3 @@
-import { EventEmitter, captureRejectionSymbol, once as onceEvent } from "node:events";
 import { Rhythm } from "@rhythmjs/rhythm";
 import type { EventBus, EventBusOptions, EventMap } from "./types";
 
@@ -33,21 +32,7 @@ export function matchesPattern(pattern: string, event: string): boolean {
 type AnyHandler = (payload: unknown, event: string) => void | Promise<void>;
 type OnErrorHook = (error: unknown, event: string, payload: unknown) => void;
 
-// Channels are prefixed so a user event named "error" never collides with
-// EventEmitter's special error-event semantics.
-const CHANNEL_PREFIX = "e:";
-
-class BusEmitter extends EventEmitter {
-  onErrorHook: OnErrorHook = () => {};
-
-  [captureRejectionSymbol](error: unknown, channel: string | symbol, payload?: unknown, event?: unknown): void {
-    const name = typeof event === "string" ? event : String(channel).slice(CHANNEL_PREFIX.length);
-    this.onErrorHook(error, name, payload);
-  }
-}
-
 interface Subscription {
-  wrapped: AnyHandler;
   once: boolean;
   unsubscribe: () => void;
 }
@@ -61,10 +46,6 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
       });
     });
 
-  const emitter = new BusEmitter({ captureRejections: true });
-  emitter.setMaxListeners(0);
-  emitter.onErrorHook = onError;
-
   const registry = new Map<string, Map<AnyHandler, Subscription>>();
 
   const subscribe = (pattern: string, handler: AnyHandler, once: boolean, signal?: AbortSignal): (() => void) => {
@@ -72,24 +53,11 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
 
     const subscription: Subscription = {
       once,
-      // A returned promise is watched by captureRejections, which routes its
-      // rejection to onError; sync throws are caught here — either way the
-      // remaining listeners always run.
-      wrapped: (payload, event) => {
-        if (once) subscription.unsubscribe();
-        try {
-          return handler(payload, event);
-        } catch (error) {
-          onError(error, event, payload);
-          return undefined;
-        }
-      },
       unsubscribe: () => {
         const handlers = registry.get(pattern);
         if (handlers === undefined || !handlers.has(handler)) return;
         handlers.delete(handler);
         if (handlers.size === 0) registry.delete(pattern);
-        emitter.off(CHANNEL_PREFIX + pattern, subscription.wrapped);
       },
     };
 
@@ -99,9 +67,31 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
       registry.set(pattern, handlers);
     }
     handlers.set(handler, subscription);
-    emitter.on(CHANNEL_PREFIX + pattern, subscription.wrapped);
     signal?.addEventListener("abort", subscription.unsubscribe, { once: true });
     return subscription.unsubscribe;
+  };
+
+  // Sync throws and async rejections both route to onError; the remaining
+  // listeners always run.
+  const invoke = (handler: AnyHandler, payload: unknown, event: string): void => {
+    try {
+      const out = handler(payload, event);
+      if (out instanceof Promise) {
+        out.catch((error: unknown) => onError(error, event, payload));
+      }
+    } catch (error) {
+      onError(error, event, payload);
+    }
+  };
+
+  const dispatchPattern = (pattern: string, payload: unknown, event: string): void => {
+    const entries = registry.get(pattern);
+    if (entries === undefined) return;
+    // Snapshot: handlers may unsubscribe (mutating the registry) mid-dispatch.
+    for (const [handler, subscription] of Array.from(entries)) {
+      if (subscription.once) subscription.unsubscribe();
+      invoke(handler, payload, event);
+    }
   };
 
   const bus = {
@@ -117,27 +107,34 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
         return subscribe(pattern, handlerOrOptions, true, onOptions?.signal);
       }
       const signal = handlerOrOptions?.signal;
-      return (async () => {
-        try {
-          const [payload] = (await onceEvent(emitter, CHANNEL_PREFIX + pattern, { signal })) as [unknown, string];
-          return payload;
-        } catch (error) {
-          if (signal?.aborted) throw (signal.reason as Error | undefined) ?? error;
-          throw error;
+      return new Promise((resolve, reject) => {
+        if (signal?.aborted) {
+          reject((signal.reason as Error | undefined) ?? new Error("aborted"));
+          return;
         }
-      })();
+        const unsubscribe = subscribe(
+          pattern,
+          (payload) => {
+            signal?.removeEventListener("abort", onAbort);
+            resolve(payload);
+          },
+          true,
+        );
+        const onAbort = (): void => {
+          unsubscribe();
+          reject((signal?.reason as Error | undefined) ?? new Error("aborted"));
+        };
+        signal?.addEventListener("abort", onAbort, { once: true });
+      });
     },
     off(pattern: string, handler: AnyHandler) {
       registry.get(pattern)?.get(handler)?.unsubscribe();
     },
     emit(event: string, payload: unknown) {
-      emitter.emit(CHANNEL_PREFIX + event, payload, event);
-      // Snapshot: handlers may unsubscribe (mutating the registry) mid-dispatch.
-      const patterns = Array.from(registry.keys());
-      for (const pattern of patterns) {
-        if (pattern !== event && matchesPattern(pattern, event)) {
-          emitter.emit(CHANNEL_PREFIX + pattern, payload, event);
-        }
+      // Exact subscribers first, then wildcard patterns in registration order.
+      dispatchPattern(event, payload, event);
+      for (const pattern of Array.from(registry.keys())) {
+        if (pattern !== event && matchesPattern(pattern, event)) dispatchPattern(pattern, payload, event);
       }
     },
     async emitAsync(event: string, payload: unknown) {

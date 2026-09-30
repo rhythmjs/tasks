@@ -1,7 +1,7 @@
 {
   "name": "tasks",
   "private": true,
-  "description": "Rhythm background-work monorepo: @rhythmjs/events, @rhythmjs/schedule, and @rhythmjs/queue. Bun workspaces, bun test, bun build.",
+  "description": "Rhythm background-work monorepo: @rhythmjs/events, @rhythmjs/schedule, @rhythmjs/queue, and @rhythmjs/bullmq. Bun workspaces, bun test, bun build.",
   "license": "ISC",
   "workspaces": [
     "packages/*",

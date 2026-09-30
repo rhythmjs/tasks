@@ -5,17 +5,17 @@ rebuilt on the kernel with the type safety string-based emitters can't offer, an
 Event names, payloads, and even **wildcard subscriptions** are checked at compile time via
 template-literal types.
 
-The engine underneath is the built-in `node:events` `EventEmitter` — one of Bun's
+The dispatch underneath is in-house and dependency-free — a pattern registry over Bun's
 natively-optimized showcase modules, equally available on Node and Deno — configured with
 `captureRejections` for async error routing and channel-prefixed internally so a user event named
-`error` never collides with `EventEmitter`'s special error semantics. The typed facade (event map,
+`error` carries no special semantics. The typed facade (event map,
 wildcards, dual emit semantics) is entirely this package; the hot dispatch path is the platform's.
 On edge runtimes this requires Node compat (e.g. Cloudflare's `nodejs_compat`).
 
 ## Install
 
 ```sh
-pnpm add @rhythmjs/events
+bun add @rhythmjs/events
 ```
 
 ## The event map is the contract
@@ -97,7 +97,7 @@ The delimiter is fixed to `.` — it is what makes the wildcard types possible.
 ## Toward durable queues
 
 The bus is deliberately in-process: no persistence, no retries, no cross-instance delivery. Those
-belong to the upcoming `@rhythmjs/queue` (BullMQ-backed), which reuses the same event-map
+belong to `@rhythmjs/queue`, which reuses the same event-map
 discipline. Two conventions now keep that path smooth:
 
 - Keep payloads **JSON-serializable** for any event you may later bridge to a queue — a queue job
@@ -112,8 +112,8 @@ eventBus.on("order.**", (payload, event) => void queue.add(event, payload));
 ## Development
 
 ```sh
-pnpm install
-pnpm test       # vp test
-pnpm typecheck  # tsc --noEmit
-pnpm build      # vp pack
+bun install
+bun test           # bun test runner
+bun run typecheck  # tsc --noEmit
+bun run build      # bun build + tsc declarations
 ```

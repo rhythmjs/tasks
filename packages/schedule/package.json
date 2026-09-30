@@ -1,12 +1,10 @@
 {
   "name": "@rhythmjs/schedule",
   "version": "0.0.1",
-  "description": "Task scheduling for Rhythm: cron, interval, and timeout jobs on a kernel module, with croner-powered in-process scheduling and adapters for Deno.cron, Cloudflare Cron Triggers, and HTTP-triggered platforms.",
+  "description": "Task scheduling for Rhythm on Bun: cron, interval, and timeout jobs on a kernel module, with an in-process scheduler and a dependency-free, timezone-aware cron engine.",
   "keywords": [
-    "cloudflare",
+    "bun",
     "cron",
-    "croner",
-    "deno",
     "interval",
     "jobs",
     "rhythm",
@@ -34,21 +32,13 @@
       "types": "./dist/types.d.ts",
       "default": "./dist/types.js"
     },
-    "./adapters/timer": {
-      "types": "./dist/adapters/timer.d.ts",
-      "default": "./dist/adapters/timer.js"
+    "./cron": {
+      "types": "./dist/cron.d.ts",
+      "default": "./dist/cron.js"
     },
-    "./adapters/deno": {
-      "types": "./dist/adapters/deno.d.ts",
-      "default": "./dist/adapters/deno.js"
-    },
-    "./adapters/cloudflare": {
-      "types": "./dist/adapters/cloudflare.d.ts",
-      "default": "./dist/adapters/cloudflare.js"
-    },
-    "./adapters/http": {
-      "types": "./dist/adapters/http.d.ts",
-      "default": "./dist/adapters/http.js"
+    "./scheduler": {
+      "types": "./dist/scheduler.d.ts",
+      "default": "./dist/scheduler.js"
     },
     "./package.json": "./package.json"
   },
@@ -56,29 +46,18 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun build src/schedule.ts src/types.ts src/adapters/timer.ts src/adapters/deno.ts src/adapters/cloudflare.ts src/adapters/http.ts --outdir dist --root src --format esm --target node --packages external && tsc -p tsconfig.build.json",
+    "build": "bun build src/schedule.ts src/types.ts src/cron.ts src/scheduler.ts --outdir dist --root src --format esm --target bun --packages external --splitting && tsc -p tsconfig.build.json",
     "prepublishOnly": "bun run typecheck && bun test && bun run build",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
-  "dependencies": {
-    "croner": "^10.0.0"
-  },
   "devDependencies": {
-    "@rhythmjs/rhythm": "^0.0.9",
-    "@rhythmjs/router": "^0.0.9"
+    "@rhythmjs/rhythm": "^0.0.9"
   },
   "peerDependencies": {
-    "@rhythmjs/rhythm": "^0.0.9",
-    "@rhythmjs/router": "^0.0.9"
-  },
-  "peerDependenciesMeta": {
-    "@rhythmjs/router": {
-      "optional": true
-    }
+    "@rhythmjs/rhythm": "^0.0.9"
   },
   "engines": {
-    "node": ">=20.19.0",
     "bun": ">=1.2.0"
   }
 }

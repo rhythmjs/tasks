@@ -1,5 +1,5 @@
-import { Cron } from "croner";
 import { Rhythm } from "@rhythmjs/rhythm";
+import { Cron } from "./cron";
 import type { JobHandler, JobOptions, JobRunResult, JobState, ScheduleJob, ScheduleService } from "./types";
 
 export type {

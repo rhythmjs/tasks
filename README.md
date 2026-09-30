@@ -3,13 +3,16 @@
 The Rhythm background-work monorepo — everything that runs outside the request/response path:
 
 - **[`packages/events`](./packages/events)** — `@rhythmjs/events`: typed in-process event bus
-  (announce). Built on the native `node:events` engine.
-- **[`packages/queue`](./packages/queue)** — `@rhythmjs/queue`: BullMQ-backed durable job queues
-  (obligate). Requires Redis; replica-safe repeatable schedules included.
+  (announce). In-house dispatch, zero dependencies.
+- **[`packages/queue`](./packages/queue)** — `@rhythmjs/queue`: typed job queues — in-memory by
+  default, Bun's native redis client for distribution (obligate). Zero queue dependencies.
+- **[`packages/bullmq`](./packages/bullmq)** — `@rhythmjs/bullmq`: the same typed queue surface on
+  full [BullMQ](https://docs.bullmq.io) (obligate, production-grade) — stalled-job recovery, Job
+  Schedulers, the BullMQ ecosystem. Requires Redis.
 - **[`packages/schedule`](./packages/schedule)** — `@rhythmjs/schedule`: cron/interval/timeout jobs
-  with in-process and platform adapters (recur).
+  with an in-process scheduler and an in-house timezone-aware cron engine (recur).
 
-The three integrate deliberately: events bridge into queue jobs
+The packages integrate deliberately: events bridge into queue jobs
 (`eventBus.on("order.**", (p, e) => queueService.add(e, p))`), queue job schedulers cover
 distributed cron, and all share the typed-map + kernel-module conventions.
 
@@ -21,7 +24,8 @@ Small runnable programs, one per package, in [`examples/`](./examples) (workspac
 ```sh
 bun examples/events/index.ts     # typed bus: wildcards, once-promise, AbortSignal, emitAsync errors
 bun examples/schedule/index.ts   # cron/interval/timeout via the timer adapter; runs ~3.5s, prints state
-bun examples/queue/index.ts      # BullMQ produce/process/schedule — needs Redis (docker run --rm -p 6379:6379 redis)
+bun examples/queue/index.ts      # produce/process/schedule — in-memory; set REDIS_URL to distribute via Bun.redis
+bun examples/bullmq/index.ts     # same flow on BullMQ — needs Redis (docker run --rm -p 6379:6379 redis)
 ```
 
 ## Tooling
