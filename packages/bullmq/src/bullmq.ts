@@ -66,9 +66,9 @@ export function createQueueService<TJobs extends JobMap>(options: BullmqModuleOp
     },
     process: (processors: JobProcessors<TJobs>, processOptions: ProcessOptions = {}) => {
       const dispatch = async (job: Job): Promise<unknown> => {
-        const handler = (processors as Record<string, ((payload: unknown, job: JobInfo) => unknown) | undefined>)[
-          job.name
-        ];
+        const handler = Object.hasOwn(processors, job.name)
+          ? (processors as Record<string, (payload: unknown, job: JobInfo) => unknown>)[job.name]
+          : undefined;
         if (handler === undefined) throw new Error(`no processor registered for job "${job.name}"`);
         return handler(job.data, { id: job.id, name: job.name, attemptsMade: job.attemptsMade });
       };

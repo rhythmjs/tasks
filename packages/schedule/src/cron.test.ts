@@ -15,6 +15,9 @@ describe("Cron parsing", () => {
 
   test("rejects malformed patterns", () => {
     expect(() => new Cron("* * * *")).toThrow("5 or 6 fields");
+    expect(() => new Cron("constructor")).toThrow("5 or 6 fields");
+    expect(() => new Cron("* * * * constructor")).toThrow('invalid day-of-week "constructor"');
+    expect(() => new Cron("* * * constructor *")).toThrow('invalid month "constructor"');
     expect(() => new Cron("61 * * * *")).toThrow('invalid minute "61"');
     expect(() => new Cron("* * * * mars *")).toThrow('invalid month "mars"');
     expect(() => new Cron("*/0 * * * *")).toThrow("invalid minute");

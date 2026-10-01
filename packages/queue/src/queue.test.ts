@@ -178,6 +178,18 @@ describe("memory engine service", () => {
     expect(String(failures[0])).toContain('no processor registered for job "report.build"');
   });
 
+  test("a job named after an inherited object key is not dispatched to Object.prototype", async () => {
+    const service = createQueueService<Record<string, unknown>>();
+    const failures: unknown[] = [];
+
+    await service.add("constructor", {});
+    service.process({}, { onFailed: (_name, _id, error) => void failures.push(error) });
+
+    await until(() => failures.length === 1);
+    await service.close();
+    expect(String(failures[0])).toContain('no processor registered for job "constructor"');
+  });
+
   test("a worker loop survives transient engine failures and keeps processing", async () => {
     const inner = memoryEngine();
     let flaky = 2;

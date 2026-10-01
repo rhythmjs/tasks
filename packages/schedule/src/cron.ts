@@ -112,8 +112,8 @@ const ALIASES: Record<string, string> = {
 };
 
 function parseValue(token: string, field: string, names: Record<string, number>, pattern: string): number {
-  const named = names[token.toLowerCase()];
-  if (named !== undefined) return named;
+  const lower = token.toLowerCase();
+  if (Object.hasOwn(names, lower)) return names[lower]!;
   if (!/^\d+$/.test(token)) throw new Error(`invalid ${field} "${token}" in cron pattern "${pattern}"`);
   return Number(token);
 }
@@ -172,7 +172,8 @@ export class Cron {
 
   constructor(pattern: string, options: CronOptions = {}) {
     this.pattern = pattern;
-    const source = ALIASES[pattern.trim().toLowerCase()] ?? pattern.trim();
+    const alias = pattern.trim().toLowerCase();
+    const source = Object.hasOwn(ALIASES, alias) ? ALIASES[alias]! : pattern.trim();
     const fields = source.split(/\s+/);
     if (fields.length < 5 || fields.length > 6) {
       throw new Error(`cron pattern "${pattern}" must have 5 or 6 fields`);

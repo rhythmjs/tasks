@@ -109,9 +109,9 @@ export function createQueueService<TJobs extends JobMap>(options: QueueModuleOpt
       let stopped = false;
 
       const dispatch = async (job: StoredJob): Promise<unknown> => {
-        const handler = (processors as Record<string, ((payload: unknown, job: JobInfo) => unknown) | undefined>)[
-          job.name
-        ];
+        const handler = Object.hasOwn(processors, job.name)
+          ? (processors as Record<string, (payload: unknown, job: JobInfo) => unknown>)[job.name]
+          : undefined;
         if (handler === undefined) throw new Error(`no processor registered for job "${job.name}"`);
         return handler(job.payload, { id: job.id, name: job.name, attemptsMade: job.attemptsMade });
       };
