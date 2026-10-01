@@ -1,6 +1,6 @@
 {
   "name": "@rhythmjs/events",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Fully typed event bus for Rhythm on the native node:events engine (Bun-optimized): template-literal-typed wildcard subscriptions, dual emit semantics, and AbortSignal unsubscription. Zero dependencies.",
   "keywords": [
     "bun",
@@ -45,10 +45,10 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@rhythmjs/rhythm": "^0.0.11"
+    "@rhythmjs/rhythm": "^0.0.14"
   },
   "peerDependencies": {
-    "@rhythmjs/rhythm": "^0.0.11"
+    "@rhythmjs/rhythm": "^0.0.14"
   },
   "engines": {
     "node": ">=20.19.0",

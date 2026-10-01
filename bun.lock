@@ -16,74 +16,74 @@
       "name": "example-bullmq",
       "dependencies": {
         "@rhythmjs/bullmq": "workspace:*",
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
     },
     "examples/events": {
       "name": "example-events",
       "dependencies": {
         "@rhythmjs/events": "workspace:*",
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
     },
     "examples/queue": {
       "name": "example-queue",
       "dependencies": {
         "@rhythmjs/queue": "workspace:*",
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
     },
     "examples/schedule": {
       "name": "example-schedule",
       "dependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
         "@rhythmjs/schedule": "workspace:*",
       },
     },
     "packages/bullmq": {
       "name": "@rhythmjs/bullmq",
-      "version": "0.0.1",
+      "version": "0.0.3",
       "dependencies": {
         "bullmq": "^5.0.0",
       },
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
     },
     "packages/events": {
       "name": "@rhythmjs/events",
-      "version": "0.0.1",
+      "version": "0.0.3",
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
     },
     "packages/queue": {
       "name": "@rhythmjs/queue",
-      "version": "0.0.1",
+      "version": "0.0.3",
       "dependencies": {
         "@rhythmjs/schedule": "workspace:*",
       },
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
     },
     "packages/schedule": {
       "name": "@rhythmjs/schedule",
-      "version": "0.0.1",
+      "version": "0.0.3",
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.11",
+        "@rhythmjs/rhythm": "^0.0.14",
       },
     },
   },
@@ -146,7 +146,7 @@
 
     "@rhythmjs/queue": ["@rhythmjs/queue@workspace:packages/queue"],
 
-    "@rhythmjs/rhythm": ["@rhythmjs/rhythm@0.0.11", "", {}, "sha512-+e3eQSsh/3wRGiF9sqtO6rkSa75eH8aDumgfwr2mAWdxy7s/14ns8Fx9uIT8AzXWKYTUsqBY2ITkw4YS3sENDg=="],
+    "@rhythmjs/rhythm": ["@rhythmjs/rhythm@0.0.14", "", {}, "sha512-MFpBWkxW8xPxTL2F0sFLgvtB9FLurTIL7vRZWu/Vj+/23MC+Q85gNdoahn+2Rvi7s0XceCrv3wrZDJqbR1uQVA=="],
 
     "@rhythmjs/schedule": ["@rhythmjs/schedule@workspace:packages/schedule"],
 
