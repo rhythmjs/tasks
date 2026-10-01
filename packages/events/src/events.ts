@@ -40,10 +40,8 @@ interface Subscription {
 export function createEventBus<TEvents extends EventMap>(options: EventBusOptions = {}): EventBus<TEvents> {
   const onError: OnErrorHook =
     options.onError ??
-    ((error: unknown) => {
-      queueMicrotask(() => {
-        throw error;
-      });
+    ((error: unknown, event: string) => {
+      console.error(`[events] unhandled error in listener for "${event}":`, error);
     });
 
   const registry = new Map<string, Map<AnyHandler, Subscription>>();

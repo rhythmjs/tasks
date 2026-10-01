@@ -264,6 +264,57 @@ describe("queueModule", () => {
   });
 });
 
+describe("redisEngine payload validation", () => {
+  const stub = (replies: Record<string, unknown>): RedisLike => ({
+    close: () => {},
+    send: (command) => Promise.resolve(command === "ZRANGEBYSCORE" && !("ZRANGEBYSCORE" in replies) ? [] : replies[command] ?? null),
+  });
+  const validJob = {
+    id: "1",
+    name: "a",
+    payload: {},
+    priority: 0,
+    attemptsMade: 0,
+    maxAttempts: 3,
+    backoffType: "fixed" as const,
+    backoffDelay: 10,
+    readyAt: 0,
+  };
+
+  test("take() returns a well-formed stored job", async () => {
+    const engine = redisEngine(stub({ LPOP: JSON.stringify(validJob) }));
+
+    expect(await engine.take(Date.now())).toEqual(validJob);
+  });
+
+  test("take() rejects jobs with the wrong shape or types", async () => {
+    const bad = [
+      "[]",
+      "null",
+      JSON.stringify({ ...validJob, maxAttempts: "1e9" }),
+      JSON.stringify({ ...validJob, maxAttempts: 0 }),
+      JSON.stringify({ ...validJob, maxAttempts: 1.5 }),
+      JSON.stringify({ ...validJob, backoffType: "none" }),
+      JSON.stringify({ ...validJob, backoffDelay: -1 }),
+      JSON.stringify({ ...validJob, name: 7 }),
+      JSON.stringify({ ...validJob, readyAt: null }),
+    ];
+    for (const raw of bad) {
+      await expect(redisEngine(stub({ LPOP: raw })).take(Date.now())).rejects.toThrow("invalid job payload");
+    }
+  });
+
+  test("claimDueRepeats() rejects malformed repeat specs", async () => {
+    const claim = (spec: unknown) =>
+      redisEngine(stub({ ZRANGEBYSCORE: ["r"], ZREM: 1, HGET: JSON.stringify(spec) })).claimDueRepeats(Date.now());
+
+    expect(await claim({ name: "r", payload: {}, nextAt: 5, every: 1000 })).toHaveLength(1);
+    await expect(claim({ name: "r", nextAt: "soon" })).rejects.toThrow("invalid repeat spec");
+    await expect(claim({ name: "r", nextAt: 5, every: 0 })).rejects.toThrow("invalid repeat spec");
+    await expect(claim({ name: "r", nextAt: 5, pattern: 3 })).rejects.toThrow("invalid repeat spec");
+  });
+});
+
 function fakeRedis(): RedisLike & { closed: boolean } {
   const lists = new Map<string, string[]>();
   const zsets = new Map<string, Map<string, number>>();

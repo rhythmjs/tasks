@@ -167,6 +167,28 @@ describe("error contracts", () => {
     ]);
   });
 
+  test("without onError, listener failures are logged and never crash the process", async () => {
+    const logged: unknown[][] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => void logged.push(args);
+    try {
+      const bus = createEventBus<AppEvents>();
+      bus.on("order.created", () => {
+        throw new Error("sync boom");
+      });
+      bus.on("order.created", () => Promise.reject(new Error("async boom")));
+
+      bus.emit("order.created", { orderId: "o1", total: 1 });
+      await tick();
+    } finally {
+      console.error = original;
+    }
+
+    expect(logged).toHaveLength(2);
+    expect(String(logged[0]?.[0])).toContain("order.created");
+    expect((logged[1]?.[1] as Error).message).toBe("async boom");
+  });
+
   test("emitAsync awaits all listeners and aggregates failures", async () => {
     const bus = createEventBus<AppEvents>();
     const done: string[] = [];

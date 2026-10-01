@@ -72,7 +72,7 @@ decorators.
 
 - `emit(event, payload): void`: fire-and-forget, synchronous dispatch. Every listener failure (sync
   throw or async rejection) routes to the module's `onError(error, event, payload)` hook; the
-  default rethrows in a microtask so nothing is silently swallowed. Emitters are never broken by
+  default logs the error with `console.error` so nothing is silently swallowed (it never crashes the process; pass `onError` to rethrow, report, or alert). Emitters are never broken by
   listeners.
 - `await emitAsync(event, payload)`: awaits all listeners in parallel; failures are collected into
   one `AggregateError` that the caller owns. Successful listeners always complete even when others

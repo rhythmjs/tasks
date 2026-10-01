@@ -9,6 +9,48 @@ export interface RedisLike {
   close(): void;
 }
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const isOptional = (value: unknown, check: (v: unknown) => boolean): boolean => value === undefined || check(value);
+
+function parseStoredJob(raw: string): StoredJob {
+  const job: unknown = JSON.parse(raw);
+  if (
+    !isObject(job) ||
+    typeof job.id !== "string" ||
+    typeof job.name !== "string" ||
+    !isNumber(job.priority) ||
+    !isNumber(job.attemptsMade) ||
+    !Number.isInteger(job.maxAttempts) ||
+    (job.maxAttempts as number) < 1 ||
+    (job.backoffType !== "fixed" && job.backoffType !== "exponential") ||
+    !isNumber(job.backoffDelay) ||
+    job.backoffDelay < 0 ||
+    !isNumber(job.readyAt)
+  ) {
+    throw new Error("invalid job payload in redis queue");
+  }
+  return job as unknown as StoredJob;
+}
+
+function parseRepeatSpec(raw: string): RepeatSpec {
+  const spec: unknown = JSON.parse(raw);
+  if (
+    !isObject(spec) ||
+    typeof spec.name !== "string" ||
+    !isNumber(spec.nextAt) ||
+    !isOptional(spec.every, (v) => isNumber(v) && v > 0) ||
+    !isOptional(spec.pattern, (v) => typeof v === "string") ||
+    !isOptional(spec.timezone, (v) => typeof v === "string") ||
+    !isOptional(spec.remaining, (v) => isNumber(v) && v >= 0) ||
+    !isOptional(spec.options, isObject)
+  ) {
+    throw new Error("invalid repeat spec in redis queue");
+  }
+  return spec as unknown as RepeatSpec;
+}
+
 export function redisEngine(
   connection?: string | Bun.RedisClient | RedisLike,
   options: RedisEngineOptions = {},
@@ -54,7 +96,7 @@ export function redisEngine(
     take: async (now) => {
       await promote(now);
       const raw = (await client.send("LPOP", [key("waiting")])) as string | null;
-      return raw === null ? null : (JSON.parse(raw) as StoredJob);
+      return raw === null ? null : parseStoredJob(raw);
     },
     requeue: async (job, readyAt) => {
       await client.send("ZADD", [key("delayed"), String(readyAt), JSON.stringify({ ...job, readyAt })]);
@@ -77,7 +119,7 @@ export function redisEngine(
         if (((await client.send("ZREM", [key("repeat"), name])) as number) !== 1) continue;
         const raw = (await client.send("HGET", [key("repeat:data"), name])) as string | null;
         await client.send("HDEL", [key("repeat:data"), name]);
-        if (raw !== null) claimed.push(JSON.parse(raw) as RepeatSpec);
+        if (raw !== null) claimed.push(parseRepeatSpec(raw));
       }
       return claimed;
     },
