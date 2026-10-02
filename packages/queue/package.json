@@ -1,7 +1,7 @@
 {
   "name": "@rhythmjs/queue",
   "version": "0.0.3",
-  "description": "Typed job queues for Rhythm on Bun: a queue module on the kernel with a typed job map, named processors, repeatable schedules, and lifecycle-managed workers \u2014 an in-memory engine by default, Bun's native redis client for distribution.",
+  "description": "Typed job queues for Rhythm on Bun: a queue module on the kernel with a typed job map, named processors, repeatable schedules, and lifecycle-managed workers — an in-memory engine by default, Bun's native redis client for distribution.",
   "keywords": [
     "background-jobs",
     "bun",
@@ -50,7 +50,7 @@
     "@rhythmjs/rhythm": "^0.0.14"
   },
   "peerDependencies": {
-    "@rhythmjs/rhythm": "^0.0.14"
+    "@rhythmjs/rhythm": ">=0.0.14"
   },
   "engines": {
     "node": ">=20.19.0",

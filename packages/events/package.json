@@ -48,7 +48,7 @@
     "@rhythmjs/rhythm": "^0.0.14"
   },
   "peerDependencies": {
-    "@rhythmjs/rhythm": "^0.0.14"
+    "@rhythmjs/rhythm": ">=0.0.14"
   },
   "engines": {
     "node": ">=20.19.0",

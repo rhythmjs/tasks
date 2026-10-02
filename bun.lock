@@ -50,7 +50,7 @@
         "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.14",
       },
     },
     "packages/events": {
@@ -60,7 +60,7 @@
         "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.14",
       },
     },
     "packages/queue": {
@@ -73,7 +73,7 @@
         "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.14",
       },
     },
     "packages/schedule": {
@@ -83,7 +83,7 @@
         "@rhythmjs/rhythm": "^0.0.14",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.14",
       },
     },
   },
