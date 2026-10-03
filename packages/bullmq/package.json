@@ -48,7 +48,7 @@
     "bullmq": "^5.0.0"
   },
   "devDependencies": {
-    "@rhythmjs/rhythm": "^0.0.15"
+    "@rhythmjs/rhythm": "^0.0.16"
   },
   "peerDependencies": {
     "@rhythmjs/rhythm": ">=0.0.15"

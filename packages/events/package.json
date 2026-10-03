@@ -45,7 +45,7 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@rhythmjs/rhythm": "^0.0.15"
+    "@rhythmjs/rhythm": "^0.0.16"
   },
   "peerDependencies": {
     "@rhythmjs/rhythm": ">=0.0.15"
