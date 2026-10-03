@@ -221,17 +221,16 @@ describe("createQueueService wiring", () => {
 });
 
 describe("bullmqModule", () => {
-  test("provides queueService on the kernel and closes everything on teardown", async () => {
+  test("exposes queueService on the kernel; closing it closes everything", async () => {
     const app = new Rhythm().register(bullmqModule.forRoot<Jobs>({ name: "mod" }), ({ queueService }) => ({
       queueService,
     }));
-    await app.setup();
     const { queueService } = await app.run({});
 
     queueService.process({});
     expect(FakeQueue.instances[0]!.name).toBe("mod");
 
-    await app.teardown();
+    await queueService.close();
     expect(FakeWorker.instances[0]!.closed).toBe(true);
     expect(FakeQueue.instances[0]!.closed).toBe(true);
   });

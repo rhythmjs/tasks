@@ -38,7 +38,7 @@ const app = new Rhythm().register(
 );
 ```
 
-The module owns the lifecycle: workers and the engine close on the kernel's `teardown()` (reverse provider order, so it plays with `gracefulShutdown` automatically).
+`forRoot` builds the service eagerly and puts it on the module's `context`. Rhythm has no lifecycle, so you close it: `await queueService.close()` on shutdown stops the workers and releases the engine.
 
 ## Producing
 

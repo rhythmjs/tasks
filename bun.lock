@@ -16,27 +16,27 @@
       "name": "example-bullmq",
       "dependencies": {
         "@rhythmjs/bullmq": "workspace:*",
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
       },
     },
     "examples/events": {
       "name": "example-events",
       "dependencies": {
         "@rhythmjs/events": "workspace:*",
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
       },
     },
     "examples/queue": {
       "name": "example-queue",
       "dependencies": {
         "@rhythmjs/queue": "workspace:*",
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
       },
     },
     "examples/schedule": {
       "name": "example-schedule",
       "dependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
         "@rhythmjs/schedule": "workspace:*",
       },
     },
@@ -47,20 +47,20 @@
         "bullmq": "^5.0.0",
       },
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": ">=0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.15",
       },
     },
     "packages/events": {
       "name": "@rhythmjs/events",
       "version": "0.0.3",
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": ">=0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.15",
       },
     },
     "packages/queue": {
@@ -70,20 +70,20 @@
         "@rhythmjs/schedule": "workspace:*",
       },
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": ">=0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.15",
       },
     },
     "packages/schedule": {
       "name": "@rhythmjs/schedule",
       "version": "0.0.3",
       "devDependencies": {
-        "@rhythmjs/rhythm": "^0.0.14",
+        "@rhythmjs/rhythm": "^0.0.15",
       },
       "peerDependencies": {
-        "@rhythmjs/rhythm": ">=0.0.14",
+        "@rhythmjs/rhythm": ">=0.0.15",
       },
     },
   },
@@ -146,7 +146,7 @@
 
     "@rhythmjs/queue": ["@rhythmjs/queue@workspace:packages/queue"],
 
-    "@rhythmjs/rhythm": ["@rhythmjs/rhythm@0.0.14", "", {}, "sha512-MFpBWkxW8xPxTL2F0sFLgvtB9FLurTIL7vRZWu/Vj+/23MC+Q85gNdoahn+2Rvi7s0XceCrv3wrZDJqbR1uQVA=="],
+    "@rhythmjs/rhythm": ["@rhythmjs/rhythm@0.0.15", "", {}, "sha512-GVsKFaGyec1z+F+lyX1tTGpjzGvCTp+yBb/KU1nAXuJTe4XS1Zss7BHpaAWY91rLE6tfpnlTweCB5wYT8b5WVw=="],
 
     "@rhythmjs/schedule": ["@rhythmjs/schedule@workspace:packages/schedule"],
 

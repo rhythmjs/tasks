@@ -64,9 +64,9 @@ eventBus.on("order.created", handler, { signal: controller.signal }); // AbortSi
 eventBus.off("order.created", handler);
 ```
 
-Listeners registered by a module belong in a provider, with the unsubscribes (or one
-`AbortController`) returned to `dispose`: lifecycle-correct teardown through the kernel, no
-decorators.
+Listeners registered by a module should be tied to an `AbortController` (the `signal` option) or
+the returned unsubscribes; call `controller.abort()` on shutdown. Rhythm has no lifecycle hooks, so
+whoever subscribes unsubscribes.
 
 ## Emitting: two semantics, two error contracts
 

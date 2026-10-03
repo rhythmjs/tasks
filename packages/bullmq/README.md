@@ -40,7 +40,7 @@ const app = new Rhythm().register(
 );
 ```
 
-The module owns the BullMQ lifecycle: workers and the queue close on the kernel's `teardown()` (reverse provider order, so it plays with `gracefulShutdown` automatically).
+`forRoot` builds the service eagerly and puts it on the module's `context`. Rhythm has no lifecycle, so you close it: `await queueService.close()` on shutdown closes the workers and the queue.
 
 ## Producing
 

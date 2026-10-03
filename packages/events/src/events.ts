@@ -1,5 +1,5 @@
 import { Rhythm } from "@rhythmjs/rhythm";
-import type { EventBus, EventBusOptions, EventMap } from "./types";
+import type { EventBus, EventBusOptions, EventMap, EventsContext } from "./types";
 
 export type {
   EventBus,
@@ -162,8 +162,8 @@ export function createEventBus<TEvents extends EventMap>(options: EventBusOption
 
 export const eventsModule = {
   forRoot<TEvents extends EventMap>(options: EventBusOptions = {}) {
-    return new Rhythm({ type: "module", name: "events" }).provide(() => ({
-      eventBus: createEventBus<TEvents>(options),
-    }));
+    const module = new Rhythm<{}, EventsContext<TEvents>>({ type: "module", name: "events" });
+    module.context.eventBus = createEventBus<TEvents>(options);
+    return module;
   },
 };

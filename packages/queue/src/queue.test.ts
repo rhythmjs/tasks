@@ -249,9 +249,8 @@ describe("memory engine service", () => {
 });
 
 describe("queueModule", () => {
-  test("provides queueService on the kernel and closes it on teardown", async () => {
+  test("exposes queueService on the kernel; the caller closes it", async () => {
     const app = new Rhythm().register(queueModule.forRoot<Jobs>(), ({ queueService }) => ({ queueService }));
-    await app.setup();
     const { queueService } = await app.run({});
 
     const handled: string[] = [];
@@ -259,7 +258,7 @@ describe("queueModule", () => {
     queueService.process({ "email.send": (payload) => void handled.push(payload.to) });
     await until(() => handled.length === 1);
 
-    await app.teardown();
+    await queueService.close();
     expect(handled).toEqual(["kernel"]);
   });
 });
@@ -267,7 +266,8 @@ describe("queueModule", () => {
 describe("redisEngine payload validation", () => {
   const stub = (replies: Record<string, unknown>): RedisLike => ({
     close: () => {},
-    send: (command) => Promise.resolve(command === "ZRANGEBYSCORE" && !("ZRANGEBYSCORE" in replies) ? [] : replies[command] ?? null),
+    send: (command) =>
+      Promise.resolve(command === "ZRANGEBYSCORE" && !("ZRANGEBYSCORE" in replies) ? [] : (replies[command] ?? null)),
   });
   const validJob = {
     id: "1",

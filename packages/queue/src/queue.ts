@@ -8,6 +8,7 @@ import type {
   JobOptions,
   JobProcessors,
   ProcessOptions,
+  QueueContext,
   QueueModuleOptions,
   QueueService,
   QueueWorkerHandle,
@@ -186,9 +187,8 @@ export function createQueueService<TJobs extends JobMap>(options: QueueModuleOpt
 
 export const queueModule = {
   forRoot<TJobs extends JobMap>(options: QueueModuleOptions = {}) {
-    return new Rhythm({ type: "module", name: "queue" }).provide(
-      () => ({ queueService: createQueueService<TJobs>(options) }),
-      (value) => value.queueService.close(),
-    );
+    const module = new Rhythm<{}, QueueContext<TJobs>>({ type: "module", name: "queue" });
+    module.context.queueService = createQueueService<TJobs>(options);
+    return module;
   },
 };

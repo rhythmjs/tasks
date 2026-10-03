@@ -6,6 +6,7 @@ import type {
   JobMap,
   JobProcessors,
   ProcessOptions,
+  QueueContext,
   QueueService,
   QueueWorkerHandle,
 } from "./types";
@@ -109,9 +110,8 @@ export function createQueueService<TJobs extends JobMap>(options: BullmqModuleOp
 
 export const bullmqModule = {
   forRoot<TJobs extends JobMap>(options: BullmqModuleOptions = {}) {
-    return new Rhythm({ type: "module", name: "bullmq" }).provide(
-      () => ({ queueService: createQueueService<TJobs>(options) }),
-      (value) => value.queueService.close(),
-    );
+    const module = new Rhythm<{}, QueueContext<TJobs>>({ type: "module", name: "bullmq" });
+    module.context.queueService = createQueueService<TJobs>(options);
+    return module;
   },
 };

@@ -20,7 +20,6 @@ const orderModule = new Rhythm<EventsContext<AppEvents>>().use(async (ctx, next)
 });
 app.register(orderModule);
 
-await app.setup();
 const { eventBus } = await app.run({});
 
 const controller = new AbortController();
@@ -49,5 +48,3 @@ try {
   const aggregate = error as AggregateError;
   console.log(`[emitAsync] ${aggregate.message}`);
 }
-
-await app.teardown();

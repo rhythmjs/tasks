@@ -1,6 +1,14 @@
 import { Rhythm } from "@rhythmjs/rhythm";
 import { Cron } from "./cron";
-import type { JobHandler, JobOptions, JobRunResult, JobState, ScheduleJob, ScheduleService } from "./types";
+import type {
+  JobHandler,
+  JobOptions,
+  JobRunResult,
+  JobState,
+  ScheduleContext,
+  ScheduleJob,
+  ScheduleService,
+} from "./types";
 
 export type {
   JobHandler,
@@ -145,8 +153,8 @@ export function createScheduleService(...jobs: ScheduleJob[]): ScheduleService {
 
 export const scheduleModule = {
   forRoot(...jobs: ScheduleJob[]) {
-    return new Rhythm({ type: "module", name: "schedule" }).provide(() => ({
-      scheduleService: createScheduleService(...jobs),
-    }));
+    const module = new Rhythm<{}, ScheduleContext>({ type: "module", name: "schedule" });
+    module.context.scheduleService = createScheduleService(...jobs);
+    return module;
   },
 };

@@ -16,7 +16,6 @@ const app = new Rhythm().register(
   ({ scheduleService }) => ({ scheduleService }),
 );
 
-await app.setup();
 const { scheduleService } = await app.run({});
 
 await scheduleService.run("warmup");
@@ -38,5 +37,4 @@ for (const job of scheduleService.jobs) {
   );
 }
 
-await app.teardown();
 console.log("stopped cleanly");

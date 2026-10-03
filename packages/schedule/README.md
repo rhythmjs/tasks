@@ -57,7 +57,7 @@ Job options: `timezone` (cron only, DST-correct), `overlap` (`"skip"`, the defau
 import { startScheduler } from "@rhythmjs/schedule/scheduler";
 
 const scheduler = startScheduler(scheduleService); // cron timers + intervals + timeouts
-scheduler.stop(); // tie into gracefulShutdown / provider dispose
+scheduler.stop(); // call on shutdown; Rhythm has no lifecycle, so you stop what you start
 ```
 
 ## The cron engine

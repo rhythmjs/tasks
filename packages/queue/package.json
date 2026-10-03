@@ -47,10 +47,10 @@
     "@rhythmjs/schedule": "workspace:*"
   },
   "devDependencies": {
-    "@rhythmjs/rhythm": "^0.0.14"
+    "@rhythmjs/rhythm": "^0.0.15"
   },
   "peerDependencies": {
-    "@rhythmjs/rhythm": ">=0.0.14"
+    "@rhythmjs/rhythm": ">=0.0.15"
   },
   "engines": {
     "node": ">=20.19.0",

@@ -26,7 +26,6 @@ const app = new Rhythm().register(
   ({ queueService }) => ({ queueService }),
 );
 
-await app.setup();
 const { queueService } = await app.run({});
 
 const done = new Set<string>();
@@ -64,6 +63,6 @@ const deadline = Date.now() + 5000;
 while (done.size < 4 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
 console.log("[counts]", await queueService.counts());
 
-await app.teardown();
+await queueService.close();
 console.log("closed cleanly");
 process.exit(0);

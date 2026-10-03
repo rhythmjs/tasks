@@ -233,7 +233,6 @@ describe("eventsModule", () => {
       .register(eventsModule.forRoot<AppEvents>(), (m) => ({ eventBus: m.eventBus }))
       .register(orderModule);
 
-    await app.setup();
     const ctx = await app.run({});
     ctx.eventBus.on("order.*", (_payload, event) => void seen.push(event));
     await app.run({});

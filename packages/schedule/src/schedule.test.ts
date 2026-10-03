@@ -145,7 +145,6 @@ describe("scheduleModule", () => {
       scheduleService: m.scheduleService,
     }));
 
-    await app.setup();
     const ctx = await app.run({});
 
     await ctx.scheduleService.run("tick");
